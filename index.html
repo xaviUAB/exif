@@ -1,0 +1,1590 @@
+<!DOCTYPE html>
+<html lang="ca" class="h-full bg-slate-950 text-slate-100">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Organitzador i Visualitzador EXIF de Fotos</title>
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  
+  <!-- EXIF.js -->
+  <script src="https://cdn.jsdelivr.net/npm/exif-js"></script>
+  
+  <!-- JSZip per exportar carpetes -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  
+  <!-- FileSaver.js per descarregar ZIP -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+  
+  <!-- Leaflet CSS i JS per mapa GPS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+    
+    body {
+      font-family: 'Inter', sans-serif;
+      user-select: none;
+    }
+
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #0f172a;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #334155;
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #475569;
+    }
+
+    .folder-item-drag-over {
+      background-color: rgba(59, 130, 246, 0.25) !important;
+      border-color: #60a5fa !important;
+    }
+
+    #leaflet-map {
+      height: 220px;
+      width: 100%;
+      border-radius: 0.5rem;
+      z-index: 10;
+    }
+  </style>
+</head>
+<body class="h-full flex flex-col overflow-hidden antialiased selection:bg-blue-600 selection:text-white">
+
+  <header class="h-16 bg-slate-900 border-b border-slate-800 flex items-center justify-between px-4 sm:px-6 shrink-0 z-20">
+    <div class="flex items-center gap-3">
+      <div class="bg-blue-600/20 p-2 rounded-xl border border-blue-500/30 text-blue-400">
+        <i data-lucide="camera" class="w-6 h-6"></i>
+      </div>
+      <div>
+        <h1 class="font-bold text-lg leading-tight text-slate-100 flex items-center gap-2">
+          EXIF Gallery & Folder Manager
+          <span class="text-xs font-normal bg-blue-500/20 text-blue-300 px-2 py-0.5 rounded-full border border-blue-500/30">v2.5</span>
+        </h1>
+        <p class="text-xs text-slate-400">Organitza, inspecciona metadades EXIF i crea carpetes</p>
+      </div>
+    </div>
+
+    <div class="flex items-center gap-2 sm:gap-3">
+      <button id="btn-load-demo" class="hidden sm:flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs px-3 py-2 rounded-lg border border-slate-700 transition">
+        <i data-lucide="sparkles" class="w-4 h-4 text-amber-400"></i>
+        <span>Fotos Demo</span>
+      </button>
+
+      <label class="cursor-pointer flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white text-xs sm:text-sm font-medium px-3 sm:px-4 py-2 rounded-lg shadow-lg shadow-blue-600/20 transition">
+        <i data-lucide="upload" class="w-4 h-4"></i>
+        <span>Afegir Imatges</span>
+        <input type="file" id="input-files" multiple accept="image/*" class="hidden" />
+      </label>
+
+      <label class="cursor-pointer hidden md:flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium px-3 py-2 rounded-lg border border-slate-700 transition" title="Carregar carpeta completa">
+        <i data-lucide="folder-plus" class="w-4 h-4 text-slate-400"></i>
+        <span>Carregar Carpeta</span>
+        <input type="file" id="input-folder" webkitdirectory directory multiple class="hidden" />
+      </label>
+
+      <button id="btn-export-zip" class="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs sm:text-sm font-medium px-3 sm:px-4 py-2 rounded-lg shadow-lg shadow-emerald-600/20 transition">
+        <i data-lucide="download" class="w-4 h-4"></i>
+        <span class="hidden sm:inline">Descarregar</span> ZIP
+      </button>
+    </div>
+  </header>
+
+  <div class="flex-1 flex overflow-hidden">
+    <aside class="w-64 sm:w-72 bg-slate-900/80 border-r border-slate-800 flex flex-col shrink-0">
+      <div class="p-3 border-b border-slate-800 flex items-center justify-between">
+        <span class="text-xs font-semibold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+          <i data-lucide="folder-tree" class="w-4 h-4"></i>
+          Carpetes
+        </span>
+        <button id="btn-create-folder" class="p-1 hover:bg-slate-800 text-slate-300 hover:text-white rounded-md transition" title="Nova Carpeta">
+          <i data-lucide="folder-plus" class="w-4 h-4"></i>
+        </button>
+      </div>
+
+      <div id="folder-list" class="flex-1 overflow-y-auto p-2 space-y-1"></div>
+
+      <div class="p-3 border-t border-slate-800 bg-slate-950/40">
+        <div class="flex items-center justify-between mb-2">
+          <h3 class="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
+            <i data-lucide="wand-2" class="w-4 h-4 text-blue-400"></i>
+            Organitzador Auto EXIF
+          </h3>
+          <button id="btn-config-criteria" class="p-1 hover:bg-slate-800 text-slate-400 hover:text-blue-400 rounded-md transition text-[11px] flex items-center gap-1" title="Seleccionar metadades">
+            <i data-lucide="sliders-horizontal" class="w-3.5 h-3.5"></i>
+            <span>Triar</span>
+          </button>
+        </div>
+        <p class="text-[11px] text-slate-400 mb-2.5">Tria quines metadades utilitzar per agrupar:</p>
+        <div id="auto-organize-list" class="grid grid-cols-1 gap-1.5"></div>
+      </div>
+
+      <div class="p-3 border-t border-slate-800 text-xs text-slate-400 flex items-center justify-between">
+        <span>Total fotos carregades:</span>
+        <span id="stat-total-photos" class="font-semibold text-slate-200">0</span>
+      </div>
+    </aside>
+
+    <main class="flex-1 flex flex-col bg-slate-950 overflow-hidden relative" id="drop-target">
+      <div class="h-14 bg-slate-900/50 border-b border-slate-800/80 flex items-center justify-between px-4 shrink-0 flex-wrap gap-2">
+        <div class="flex items-center gap-2 flex-1 max-w-xs">
+          <div class="relative w-full">
+            <i data-lucide="search" class="w-4 h-4 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-500"></i>
+            <input type="text" id="input-search" placeholder="Cercar per nom, càmera, model..." class="w-full bg-slate-800/80 border border-slate-700/60 rounded-lg pl-8 pr-3 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-blue-500 transition" />
+          </div>
+        </div>
+
+        <div class="flex items-center gap-2">
+          <span class="text-xs text-slate-400 hidden sm:inline">Ordenar per EXIF:</span>
+          <select id="select-sort-by" class="bg-slate-800/80 border border-slate-700/60 text-xs text-slate-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-blue-500 transition">
+            <option value="exifDateDesc">Data EXIF (Més recents)</option>
+            <option value="exifDateAsc">Data EXIF (Més antigues)</option>
+            <option value="nameAsc">Nom fitxer (A-Z)</option>
+            <option value="nameDesc">Nom fitxer (Z-A)</option>
+            <option value="sizeDesc">Mida de fitxer (Més gran)</option>
+            <option value="sizeAsc">Mida de fitxer (Més petit)</option>
+            <option value="cameraModel">Model de Càmera</option>
+            <option value="isoValue">Valor ISO</option>
+            <option value="apertureValue">Obertura (f-number)</option>
+            <option value="focalLengthValue">Distància Focal</option>
+            <option value="resolutionValue">Resolució (Megapíxels)</option>
+          </select>
+
+          <div class="flex border border-slate-700/60 rounded-lg overflow-hidden bg-slate-800/50">
+            <button id="btn-view-grid" class="p-1.5 bg-slate-700 text-white transition"><i data-lucide="grid" class="w-4 h-4"></i></button>
+            <button id="btn-view-list" class="p-1.5 text-slate-400 hover:text-white transition"><i data-lucide="list" class="w-4 h-4"></i></button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Batch Toolbar -->
+      <div id="batch-toolbar" class="hidden bg-blue-900/30 border-b border-blue-500/30 px-4 py-2 flex items-center justify-between text-xs text-blue-200">
+        <div class="flex items-center gap-2">
+          <span class="font-semibold" id="batch-count">0 seleccionats</span>
+          <button id="btn-deselect-all" class="text-slate-400 hover:text-white underline text-[11px] ml-2">Desseleccionar tot</button>
+        </div>
+        <div class="flex items-center gap-2">
+          <select id="select-move-folder" class="bg-slate-800 border border-slate-700 text-xs text-slate-200 rounded px-2 py-1">
+            <option value="">-- Moure a la carpeta... --</option>
+          </select>
+          <button id="btn-batch-export-disk" class="bg-emerald-700 hover:bg-emerald-600 text-white border border-emerald-600 px-2.5 py-1 rounded flex items-center gap-1 transition" title="Moure/Desar les seleccionades a una carpeta física del disc dur">
+            <i data-lucide="hard-drive-upload" class="w-3.5 h-3.5"></i> Desar a Disc Dur
+          </button>
+          <button id="btn-batch-rename" class="bg-slate-800 hover:bg-slate-700 border border-slate-600 px-2.5 py-1 rounded flex items-center gap-1 transition">
+            <i data-lucide="file-signature" class="w-3.5 h-3.5"></i> Canviar noms
+          </button>
+          <button id="btn-batch-delete" class="bg-rose-600/80 hover:bg-rose-600 text-white px-2.5 py-1 rounded flex items-center gap-1 transition">
+            <i data-lucide="trash-2" class="w-3.5 h-3.5"></i> Eliminar
+          </button>
+        </div>
+      </div>
+
+      <!-- Gallery Grid -->
+      <div id="gallery-container" class="flex-1 overflow-y-auto p-4 sm:p-6">
+        <div id="empty-state" class="h-full flex flex-col items-center justify-center text-center p-6 border-2 border-dashed border-slate-800 rounded-2xl bg-slate-900/20">
+          <div class="w-16 h-16 rounded-full bg-slate-800/80 flex items-center justify-center text-slate-400 mb-4 border border-slate-700">
+            <i data-lucide="image-plus" class="w-8 h-8"></i>
+          </div>
+          <h2 class="text-lg font-semibold text-slate-200 mb-1">Cap imatge en aquesta carpeta</h2>
+          <p class="text-xs text-slate-400 max-w-md mb-6">
+            Arrossega i deixa anar fitxers o carpetes aquí, o utilitza els botons superiors per importar imatges i examinar la seva informació EXIF.
+          </p>
+          <div class="flex flex-wrap justify-center gap-3">
+            <label class="cursor-pointer bg-blue-600 hover:bg-blue-500 text-white text-xs px-4 py-2.5 rounded-lg shadow-md font-medium transition flex items-center gap-2">
+              <i data-lucide="upload" class="w-4 h-4"></i> Seleccionar Fitxers
+              <input type="file" id="empty-input-files" multiple accept="image/*" class="hidden" />
+            </label>
+            <button id="empty-btn-demo" class="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-xs px-4 py-2.5 rounded-lg font-medium transition flex items-center gap-2">
+              <i data-lucide="sparkles" class="w-4 h-4 text-amber-400"></i> Carregar Fotos de Mostra
+            </button>
+          </div>
+        </div>
+
+        <div id="gallery-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-4 hidden"></div>
+      </div>
+
+      <div id="drag-overlay" class="absolute inset-0 bg-blue-900/80 backdrop-blur-sm border-4 border-dashed border-blue-400 flex flex-col items-center justify-center gap-3 z-50 pointer-events-none opacity-0 transition-opacity duration-200">
+        <i data-lucide="upload-cloud" class="w-16 h-16 text-blue-200 animate-bounce"></i>
+        <p class="text-xl font-bold text-white">Afluixa els fitxers per importar-los</p>
+        <p class="text-xs text-blue-200">Llegirem les dades EXIF automàticament</p>
+      </div>
+    </main>
+  </div>
+
+  <div id="exif-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-6 z-50 hidden">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-4xl w-full max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
+      <div class="p-4 border-b border-slate-800 flex items-center justify-between bg-slate-900 shrink-0">
+        <div class="flex items-center gap-2 overflow-hidden">
+          <i data-lucide="file-text" class="w-5 h-5 text-blue-400 shrink-0"></i>
+          <h2 id="modal-photo-name" class="font-bold text-sm text-slate-100 truncate">Fitxer</h2>
+        </div>
+        <button id="btn-close-exif-modal" class="p-1 hover:bg-slate-800 text-slate-400 hover:text-white rounded-lg transition">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <div class="flex-1 overflow-y-auto p-4 sm:p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div class="flex flex-col gap-4">
+          <div class="aspect-video bg-slate-950 rounded-xl overflow-hidden border border-slate-800 flex items-center justify-center">
+            <img id="modal-photo-img" src="" alt="Preview" class="max-h-full max-w-full object-contain" />
+          </div>
+
+          <div class="bg-slate-950/60 p-3 rounded-xl border border-slate-800/80 space-y-2 text-xs">
+            <div class="flex justify-between text-slate-400"><span>Mida fitxer:</span><span id="modal-photo-size" class="text-slate-200"></span></div>
+            <div class="flex justify-between text-slate-400"><span>Dimensions:</span><span id="modal-photo-dim" class="text-slate-200"></span></div>
+            <div class="flex justify-between text-slate-400"><span>Carpeta actual:</span><span id="modal-photo-folder" class="text-blue-400 font-mono"></span></div>
+            <div class="flex justify-between text-slate-400"><span>Data captura:</span><span id="modal-photo-date" class="text-slate-200"></span></div>
+          </div>
+        </div>
+
+        <div class="space-y-4 flex flex-col">
+          <div class="bg-slate-950/60 p-3.5 rounded-xl border border-slate-800/80 space-y-3">
+            <h3 class="font-semibold text-xs text-blue-400 uppercase tracking-wider flex items-center gap-1.5">
+              <i data-lucide="sliders" class="w-4 h-4"></i> Metadades EXIF Principals
+            </h3>
+            <div class="grid grid-cols-2 gap-2 text-xs">
+              <div class="p-2 bg-slate-900/80 rounded-lg border border-slate-800">
+                <span class="text-slate-500 text-[10px] block">Càmera</span>
+                <span id="modal-exif-camera" class="font-medium text-slate-200 truncate block"></span>
+              </div>
+              <div class="p-2 bg-slate-900/80 rounded-lg border border-slate-800">
+                <span class="text-slate-500 text-[10px] block">Objectiu</span>
+                <span id="modal-exif-lens" class="font-medium text-slate-200 truncate block"></span>
+              </div>
+              <div class="p-2 bg-slate-900/80 rounded-lg border border-slate-800">
+                <span class="text-slate-500 text-[10px] block">ISO</span>
+                <span id="modal-exif-iso" class="font-medium text-amber-400 block"></span>
+              </div>
+              <div class="p-2 bg-slate-900/80 rounded-lg border border-slate-800">
+                <span class="text-slate-500 text-[10px] block">Obertura</span>
+                <span id="modal-exif-aperture" class="font-medium text-slate-200 block"></span>
+              </div>
+              <div class="p-2 bg-slate-900/80 rounded-lg border border-slate-800">
+                <span class="text-slate-500 text-[10px] block">Obturació</span>
+                <span id="modal-exif-shutter" class="font-medium text-slate-200 block"></span>
+              </div>
+              <div class="p-2 bg-slate-900/80 rounded-lg border border-slate-800">
+                <span class="text-slate-500 text-[10px] block">Distància Focal</span>
+                <span id="modal-exif-focal" class="font-medium text-slate-200 block"></span>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <h3 class="font-semibold text-xs text-slate-400 mb-2 flex items-center gap-1.5">
+              <i data-lucide="map-pin" class="w-4 h-4 text-teal-400"></i> Ubicació GPS
+            </h3>
+            <div id="leaflet-map" class="hidden border border-slate-800"></div>
+            <div id="no-gps-msg" class="p-3 bg-slate-950/40 rounded-lg border border-slate-800 text-xs text-slate-500 text-center italic">
+              Sense coordenades GPS registrades en les metadades EXIF.
+            </div>
+          </div>
+
+          <div class="flex-1 flex flex-col">
+            <div class="flex items-center justify-between mb-2">
+              <h3 class="font-semibold text-xs text-slate-400 flex items-center gap-1.5">
+                <i data-lucide="list-tree" class="w-4 h-4 text-indigo-400"></i> Totes les Etiquetes EXIF
+              </h3>
+              <input type="text" id="input-modal-exif-search" placeholder="Filtrar tag..." class="bg-slate-800 border border-slate-700/80 rounded px-2 py-0.5 text-[11px] text-slate-200 w-28 focus:outline-none focus:border-blue-500" />
+            </div>
+            <div id="modal-full-exif" class="flex-1 min-h-[140px] max-h-[180px] overflow-y-auto bg-slate-950/80 p-2 rounded-lg border border-slate-800 text-[11px] space-y-1"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="criteria-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 z-50 hidden">
+    <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 max-w-md w-full shadow-2xl space-y-4">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+        <h3 class="font-bold text-sm text-slate-100 flex items-center gap-2">
+          <i data-lucide="sliders-horizontal" class="w-4 h-4 text-blue-400"></i>
+          Seleccionar Criteris d'Agrupació EXIF
+        </h3>
+        <button id="btn-close-criteria-modal" class="text-slate-400 hover:text-white p-1 rounded-md">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+      </div>
+
+      <p class="text-xs text-slate-400 leading-relaxed">
+        Marca les metadades que vols tenir disponibles a la barra lateral per agrupar les teves imatges automàticament:
+      </p>
+
+      <div class="space-y-2 max-h-60 overflow-y-auto pr-1 text-xs text-slate-200" id="criteria-checkbox-list"></div>
+
+      <div class="flex justify-end gap-2 pt-3 border-t border-slate-800">
+        <button id="btn-save-criteria" class="px-4 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs rounded-lg font-medium transition">
+          Aplicar Canvis
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div id="confirm-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 z-50 hidden">
+    <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 max-w-sm w-full shadow-2xl space-y-4">
+      <div class="flex items-center gap-3">
+        <div id="confirm-icon-bg" class="p-2 rounded-lg bg-rose-500/20 text-rose-400">
+          <i data-lucide="alert-triangle" class="w-5 h-5"></i>
+        </div>
+        <h3 id="confirm-title" class="font-bold text-sm text-slate-100">Confirmació</h3>
+      </div>
+      <p id="confirm-message" class="text-xs text-slate-300 leading-relaxed"></p>
+      <div class="flex justify-end gap-2 pt-2">
+        <button id="confirm-btn-cancel" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs rounded-lg transition">Cancel·lar</button>
+        <button id="confirm-btn-ok" class="px-3 py-1.5 bg-rose-600 hover:bg-rose-500 text-white text-xs rounded-lg font-medium transition">Confirmar</button>
+      </div>
+    </div>
+  </div>
+
+  <dialog id="prompt-dialog" class="bg-slate-900 text-slate-100 border border-slate-800 rounded-xl p-5 shadow-2xl backdrop:bg-slate-950/80 max-w-sm w-full">
+    <form method="dialog" id="prompt-form">
+      <h3 id="dialog-title" class="font-bold text-sm text-slate-200 mb-2">Títol</h3>
+      <p id="dialog-desc" class="text-xs text-slate-400 mb-3">Descripció</p>
+      <input type="text" id="dialog-input" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-100 focus:outline-none focus:border-blue-500 mb-4" />
+      <div class="flex justify-end gap-2">
+        <button type="button" id="dialog-cancel" class="px-3 py-1.5 bg-slate-800 text-slate-300 text-xs rounded-lg hover:bg-slate-700">Cancel·lar</button>
+        <button type="submit" id="dialog-confirm" class="px-3 py-1.5 bg-blue-600 text-white text-xs rounded-lg hover:bg-blue-500">Confirmar</button>
+      </div>
+    </form>
+  </dialog>
+
+  <script>
+    const AppState = {
+      photos: [],
+      folders: ["/"],
+      currentFolder: "/",
+      selectedPhotoIds: new Set(),
+      lastSelectedId: null,
+      viewMode: 'grid',
+      sortBy: 'exifDateDesc',
+      searchQuery: '',
+      currentModalPhoto: null,
+      leafletMap: null,
+      leafletMarker: null,
+      availableCriteria: [
+        { id: 'dateYearMonth', name: 'Per Data (Any / Mes)', icon: 'calendar', color: 'text-blue-400', active: true },
+        { id: 'dateFull', name: 'Per Data Completa (Any / Mes / Dia)', icon: 'calendar-days', color: 'text-cyan-400', active: false },
+        { id: 'cameraModel', name: 'Per Model de Càmera', icon: 'camera', color: 'text-emerald-400', active: true },
+        { id: 'isoValue', name: 'Per Sensibilitat ISO', icon: 'sliders', color: 'text-amber-400', active: true },
+        { id: 'lensModel', name: 'Per Objectiu (Lens)', icon: 'aperture', color: 'text-purple-400', active: true },
+        { id: 'orientation', name: 'Per Orientació (Horiz/Vert)', icon: 'rotate-cw', color: 'text-rose-400', active: true },
+        { id: 'gpsLocation', name: 'Per Ubicació GPS', icon: 'map-pin', color: 'text-teal-400', active: true },
+        { id: 'fStop', name: 'Per Obertura (f-number)', icon: 'circle-dot', color: 'text-indigo-400', active: false },
+        { id: 'focalLength', name: 'Per Distància Focal (mm)', icon: 'zoom-in', color: 'text-orange-400', active: false }
+      ]
+    };
+
+    function showConfirm(title, message, isDanger = true) {
+      return new Promise((resolve) => {
+        const modal = document.getElementById('confirm-modal');
+        const titleEl = document.getElementById('confirm-title');
+        const msgEl = document.getElementById('confirm-message');
+        const btnOk = document.getElementById('confirm-btn-ok');
+        const btnCancel = document.getElementById('confirm-btn-cancel');
+
+        titleEl.textContent = title;
+        msgEl.textContent = message;
+        btnCancel.classList.remove('hidden');
+
+        if (isDanger) {
+          btnOk.className = "px-3 py-1.5 bg-rose-600 hover:bg-rose-500 text-white text-xs rounded-lg font-medium transition";
+        } else {
+          btnOk.className = "px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs rounded-lg font-medium transition";
+        }
+
+        modal.classList.remove('hidden');
+        refreshIcons();
+
+        const cleanup = () => {
+          modal.classList.add('hidden');
+          btnOk.removeEventListener('click', onOk);
+          btnCancel.removeEventListener('click', onCancel);
+        };
+
+        const onOk = () => { cleanup(); resolve(true); };
+        const onCancel = () => { cleanup(); resolve(false); };
+
+        btnOk.addEventListener('click', onOk);
+        btnCancel.addEventListener('click', onCancel);
+      });
+    }
+
+    function showAlert(title, message) {
+      return new Promise((resolve) => {
+        const modal = document.getElementById('confirm-modal');
+        const titleEl = document.getElementById('confirm-title');
+        const msgEl = document.getElementById('confirm-message');
+        const btnOk = document.getElementById('confirm-btn-ok');
+        const btnCancel = document.getElementById('confirm-btn-cancel');
+
+        titleEl.textContent = title;
+        msgEl.textContent = message;
+        btnCancel.classList.add('hidden');
+        btnOk.className = "px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs rounded-lg font-medium transition";
+
+        modal.classList.remove('hidden');
+        refreshIcons();
+
+        const cleanup = () => {
+          modal.classList.add('hidden');
+          btnOk.removeEventListener('click', onOk);
+        };
+
+        const onOk = () => { cleanup(); resolve(); };
+        btnOk.addEventListener('click', onOk);
+      });
+    }
+
+    function showPrompt(title, description, defaultValue = "") {
+      return new Promise((resolve) => {
+        const dialog = document.getElementById('prompt-dialog');
+        const titleEl = document.getElementById('dialog-title');
+        const descEl = document.getElementById('dialog-desc');
+        const inputEl = document.getElementById('dialog-input');
+        const cancelBtn = document.getElementById('dialog-cancel');
+        const form = document.getElementById('prompt-form');
+
+        titleEl.textContent = title;
+        descEl.textContent = description;
+        inputEl.value = defaultValue;
+
+        dialog.showModal();
+
+        const cleanup = () => {
+          dialog.close();
+          cancelBtn.removeEventListener('click', onCancel);
+          form.removeEventListener('submit', onSubmit);
+        };
+
+        const onCancel = () => {
+          cleanup();
+          resolve(null);
+        };
+
+        const onSubmit = (e) => {
+          e.preventDefault();
+          const val = inputEl.value;
+          cleanup();
+          resolve(val);
+        };
+
+        cancelBtn.addEventListener('click', onCancel);
+        form.addEventListener('submit', onSubmit);
+      });
+    }
+
+    function refreshIcons() {
+      if (window.lucide) lucide.createIcons();
+    }
+
+    function generateId() {
+      return 'photo_' + Math.random().toString(36).substr(2, 9);
+    }
+
+    function formatBytes(bytes) {
+      if (!bytes || bytes === 0) return '0 B';
+      const k = 1024;
+      const sizes = ['B', 'KB', 'MB', 'GB'];
+      const i = Math.floor(Math.log(bytes) / Math.log(k));
+      return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+    }
+
+    function formatDate(dateObj) {
+      if (!dateObj || isNaN(dateObj.getTime())) return 'Data desconeguda';
+      return dateObj.toLocaleDateString('ca-ES', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    }
+
+    function parseExifValue(val) {
+      if (val === null || val === undefined) return null;
+      if (typeof val === 'number') return val;
+      if (typeof val === 'string') return val.trim();
+      if (Array.isArray(val)) return val.map(parseExifValue).join(', ');
+      if (typeof val === 'object' && val.numerator !== undefined && val.denominator !== undefined) {
+        return val.denominator !== 0 ? (val.numerator / val.denominator) : 0;
+      }
+      return String(val);
+    }
+
+    function getExifEnumText(tag, value) {
+      if (value === null || value === undefined) return null;
+      const num = Number(value);
+      
+      if (tag === 'ExposureProgram') {
+        const map = { 1: 'Manual', 2: 'Programa Normal', 3: 'Prioritat Obertura (A/Av)', 4: 'Prioritat Obturador (S/Tv)', 5: 'Creatiu', 6: 'Acció/Esport', 7: 'Retrat', 8: 'Paisatge' };
+        return map[num] || `Codi ${num}`;
+      }
+      if (tag === 'MeteringMode') {
+        const map = { 1: 'Mitjana', 2: 'Ponderada al Centre', 3: 'Puntual (Spot)', 4: 'Multipunt', 5: 'Matricial/Avaluat', 6: 'Parcial' };
+        return map[num] || `Codi ${num}`;
+      }
+      if (tag === 'WhiteBalance') return num === 0 ? 'Automàtic' : num === 1 ? 'Manual' : `Codi ${num}`;
+      if (tag === 'Flash') {
+        if (num === 0) return 'Sense Flash';
+        if ((num & 1) === 1) return 'Flash Disparat';
+        return 'Flash no disparat';
+      }
+      if (tag === 'Orientation') {
+        const map = { 1: 'Normal (0°)', 3: 'Invertida (180°)', 6: 'Rotada 90° CW', 8: 'Rotada 270° CW' };
+        return map[num] || `Codi ${num}`;
+      }
+      return String(value);
+    }
+
+    function convertDMSToDD(dms, ref) {
+      if (!dms || dms.length < 3) return null;
+      const degrees = parseExifValue(dms[0]);
+      const minutes = parseExifValue(dms[1]);
+      const seconds = parseExifValue(dms[2]);
+      
+      let dd = degrees + (minutes / 60) + (seconds / 3600);
+      if (ref === "S" || ref === "W") dd = dd * -1;
+      return dd;
+    }
+
+    async function processImageFile(file, folderPath = "/") {
+      return new Promise((resolve) => {
+        const photoId = generateId();
+        const blobUrl = URL.createObjectURL(file);
+        const fingerprint = `${file.name}_${file.size}_${file.lastModified}`;
+
+        const photoData = {
+          id: photoId,
+          fingerprint: fingerprint,
+          file: file,
+          name: file.name,
+          size: file.size,
+          type: file.type,
+          lastModified: file.lastModified,
+          folder: folderPath,
+          url: blobUrl,
+          exif: {
+            dateTaken: null,
+            make: 'Desconegut',
+            model: 'Càmera Generica',
+            lensModel: 'Sense dades d\'objectiu',
+            iso: null,
+            fNumber: null,
+            fNumberNum: null,
+            exposureTime: null,
+            focalLength: null,
+            focalLengthNum: null,
+            width: 0,
+            height: 0,
+            megapixels: 0,
+            latitude: null,
+            longitude: null,
+            altitude: null,
+            orientation: null,
+            flash: null,
+            whiteBalance: null,
+            meteringMode: null,
+            exposureProgram: null,
+            rawTags: {}
+          }
+        };
+
+        const img = new Image();
+        img.onload = function() {
+          photoData.exif.width = img.naturalWidth;
+          photoData.exif.height = img.naturalHeight;
+          photoData.exif.megapixels = parseFloat(((img.naturalWidth * img.naturalHeight) / 1000000).toFixed(1));
+
+          if (window.EXIF) {
+            EXIF.getData(file, function() {
+              const tags = EXIF.getAllTags(this);
+              photoData.exif.rawTags = tags || {};
+
+              const rawDate = tags.DateTimeOriginal || tags.DateTimeDigitized || tags.DateTime;
+              if (rawDate && typeof rawDate === 'string') {
+                const parts = rawDate.split(' ');
+                if (parts.length === 2) {
+                  const dateParts = parts[0].split(':');
+                  const timeParts = parts[1].split(':');
+                  if (dateParts.length === 3 && timeParts.length === 3) {
+                    photoData.exif.dateTaken = new Date(
+                      parseInt(dateParts[0]),
+                      parseInt(dateParts[1]) - 1,
+                      parseInt(dateParts[2]),
+                      parseInt(timeParts[0]),
+                      parseInt(timeParts[1]),
+                      parseInt(timeParts[2])
+                    );
+                  }
+                }
+              }
+
+              if (!photoData.exif.dateTaken || isNaN(photoData.exif.dateTaken.getTime())) {
+                photoData.exif.dateTaken = new Date(file.lastModified);
+              }
+
+              if (tags.Make) photoData.exif.make = String(tags.Make).trim();
+              if (tags.Model) photoData.exif.model = String(tags.Model).trim();
+
+              if (tags.LensModel) photoData.exif.lensModel = String(tags.LensModel).trim();
+              else if (tags.UndefinedTag_0xA434) photoData.exif.lensModel = String(tags.UndefinedTag_0xA434).trim();
+
+              if (tags.ISOSpeedRatings) {
+                const isoVal = Array.isArray(tags.ISOSpeedRatings) ? tags.ISOSpeedRatings[0] : tags.ISOSpeedRatings;
+                photoData.exif.iso = Number(parseExifValue(isoVal));
+              } else if (tags.PhotographicSensitivity) {
+                photoData.exif.iso = Number(parseExifValue(tags.PhotographicSensitivity));
+              }
+
+              if (tags.FNumber) {
+                const fn = parseExifValue(tags.FNumber);
+                photoData.exif.fNumberNum = typeof fn === 'number' ? fn : parseFloat(fn);
+                photoData.exif.fNumber = `f/${photoData.exif.fNumberNum.toFixed(1)}`;
+              }
+
+              if (tags.ExposureTime) {
+                const exp = tags.ExposureTime;
+                if (typeof exp === 'number') {
+                  photoData.exif.exposureTime = exp < 1 ? `1/${Math.round(1/exp)}s` : `${exp}s`;
+                } else if (exp.numerator && exp.denominator) {
+                  photoData.exif.exposureTime = `${exp.numerator}/${exp.denominator}s`;
+                }
+              }
+
+              if (tags.FocalLength) {
+                const fl = parseExifValue(tags.FocalLength);
+                const num = typeof fl === 'number' ? fl : parseFloat(fl);
+                photoData.exif.focalLengthNum = num;
+                photoData.exif.focalLength = `${Math.round(num)}mm`;
+              }
+
+              if (tags.Flash !== undefined) photoData.exif.flash = getExifEnumText('Flash', tags.Flash);
+              if (tags.WhiteBalance !== undefined) photoData.exif.whiteBalance = getExifEnumText('WhiteBalance', tags.WhiteBalance);
+              if (tags.MeteringMode !== undefined) photoData.exif.meteringMode = getExifEnumText('MeteringMode', tags.MeteringMode);
+              if (tags.ExposureProgram !== undefined) photoData.exif.exposureProgram = getExifEnumText('ExposureProgram', tags.ExposureProgram);
+              if (tags.Orientation !== undefined) photoData.exif.orientation = getExifEnumText('Orientation', tags.Orientation);
+
+              if (tags.GPSLatitude && tags.GPSLongitude) {
+                photoData.exif.latitude = convertDMSToDD(tags.GPSLatitude, tags.GPSLatitudeRef);
+                photoData.exif.longitude = convertDMSToDD(tags.GPSLongitude, tags.GPSLongitudeRef);
+              }
+              if (tags.GPSAltitude) {
+                const alt = parseExifValue(tags.GPSAltitude);
+                photoData.exif.altitude = typeof alt === 'number' ? `${Math.round(alt)}m` : String(alt);
+              }
+
+              resolve(photoData);
+            });
+          } else {
+            photoData.exif.dateTaken = new Date(file.lastModified);
+            resolve(photoData);
+          }
+        };
+
+        img.onerror = function() {
+          photoData.exif.dateTaken = new Date(file.lastModified);
+          resolve(photoData);
+        };
+
+        img.src = blobUrl;
+      });
+    }
+
+    async function importFiles(files) {
+      if (!files || files.length === 0) return;
+
+      let addedCount = 0;
+      let skippedDuplicates = 0;
+
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        const fp = `${file.name}_${file.size}_${file.lastModified}`;
+
+        const isDuplicate = AppState.photos.some(p => p.fingerprint === fp || (p.name === file.name && p.size === file.size && p.lastModified === file.lastModified));
+
+        if (isDuplicate) {
+          skippedDuplicates++;
+          continue;
+        }
+
+        const photoData = await processImageFile(file, AppState.currentFolder);
+        AppState.photos.push(photoData);
+        addedCount++;
+      }
+
+      document.getElementById('stat-total-photos').textContent = AppState.photos.length;
+      renderFolderTree();
+      renderGallery();
+
+      if (skippedDuplicates > 0) {
+        await showAlert("Importació Finalitzada", `S'han afegit ${addedCount} imatges noves.\nS'han omès ${skippedDuplicates} imatges que ja s'estaven visualitzant (duplicades).`);
+      }
+    }
+
+    function createFolder(folderName) {
+      let cleanName = folderName.trim().replace(/^\/+|\/+$/g, '');
+      if (!cleanName) return;
+
+      let fullPath = AppState.currentFolder === "/" ? `/${cleanName}` : `${AppState.currentFolder}/${cleanName}`;
+      
+      if (!AppState.folders.includes(fullPath)) {
+        AppState.folders.push(fullPath);
+        renderFolderTree();
+        updateMoveDropdown();
+      }
+      return fullPath;
+    }
+
+    function renderFolderTree() {
+      const folderListEl = document.getElementById('folder-list');
+      folderListEl.innerHTML = '';
+
+      const sortedFolders = [...AppState.folders].sort();
+
+      sortedFolders.forEach(folderPath => {
+        const count = AppState.photos.filter(p => p.folder === folderPath).length;
+        const isActive = AppState.currentFolder === folderPath;
+        const isRoot = folderPath === "/";
+        const folderName = isRoot ? "Totes les Fotos (/)" : folderPath.split('/').pop();
+        const depth = isRoot ? 0 : folderPath.split('/').length - 2;
+
+        const folderEl = document.createElement('div');
+        folderEl.className = `group flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs cursor-pointer border transition-colors ${
+          isActive 
+            ? 'bg-blue-600/20 text-blue-300 border-blue-500/40 font-medium' 
+            : 'text-slate-300 hover:bg-slate-800/60 border-transparent'
+        }`;
+        folderEl.style.paddingLeft = `${0.625 + depth * 0.75}rem`;
+
+        folderEl.innerHTML = `
+          <div class="flex items-center gap-2 overflow-hidden">
+            <i data-lucide="${isRoot ? 'images' : 'folder'}" class="w-4 h-4 shrink-0 ${isActive ? 'text-blue-400' : 'text-slate-400 group-hover:text-blue-400'}"></i>
+            <span class="truncate">${folderName}</span>
+          </div>
+          <div class="flex items-center gap-1.5">
+            <span class="text-[10px] px-1.5 py-0.2 rounded-full ${isActive ? 'bg-blue-500/30 text-blue-200' : 'bg-slate-800 text-slate-400'}">${count}</span>
+            ${!isRoot ? `
+              <button class="btn-delete-folder opacity-0 group-hover:opacity-100 p-0.5 hover:text-rose-400 transition" title="Eliminar carpeta">
+                <i data-lucide="trash" class="w-3 h-3"></i>
+              </button>
+            ` : ''}
+          </div>
+        `;
+
+        folderEl.addEventListener('click', (e) => {
+          if (e.target.closest('.btn-delete-folder')) return;
+          AppState.currentFolder = folderPath;
+          renderFolderTree();
+          renderGallery();
+        });
+
+        folderEl.addEventListener('dragover', (e) => {
+          e.preventDefault();
+          folderEl.classList.add('folder-item-drag-over');
+        });
+
+        folderEl.addEventListener('dragleave', () => {
+          folderEl.classList.remove('folder-item-drag-over');
+        });
+
+        folderEl.addEventListener('drop', (e) => {
+          e.preventDefault();
+          folderEl.classList.remove('folder-item-drag-over');
+          const photoId = e.dataTransfer.getData('text/plain');
+          if (photoId) movePhotoToFolder(photoId, folderPath);
+        });
+
+        const deleteBtn = folderEl.querySelector('.btn-delete-folder');
+        if (deleteBtn) {
+          deleteBtn.addEventListener('click', async (e) => {
+            e.stopPropagation();
+            const confirmed = await showConfirm(
+              "Eliminar Carpeta",
+              `Estàs segur que vols eliminar la carpeta "${folderName}"? Les fotos tornaran a l'arrel (/).`
+            );
+            if (confirmed) {
+              AppState.photos.forEach(p => {
+                if (p.folder === folderPath) p.folder = "/";
+              });
+              AppState.folders = AppState.folders.filter(f => f !== folderPath && !f.startsWith(folderPath + '/'));
+              if (AppState.currentFolder.startsWith(folderPath)) {
+                AppState.currentFolder = "/";
+              }
+              renderFolderTree();
+              renderGallery();
+            }
+          });
+        }
+
+        folderListEl.appendChild(folderEl);
+      });
+
+      updateMoveDropdown();
+      refreshIcons();
+    }
+
+    function updateMoveDropdown() {
+      const selectMove = document.getElementById('select-move-folder');
+      if (!selectMove) return;
+      selectMove.innerHTML = '<option value="">-- Moure a la carpeta... --</option>';
+      AppState.folders.forEach(f => {
+        const option = document.createElement('option');
+        option.value = f;
+        option.textContent = f === "/" ? "/ (Arrel)" : f;
+        selectMove.appendChild(option);
+      });
+    }
+
+    function movePhotoToFolder(photoId, targetFolder) {
+      const photo = AppState.photos.find(p => p.id === photoId);
+      if (photo) {
+        photo.folder = targetFolder;
+        renderFolderTree();
+        renderGallery();
+      }
+    }
+
+    function renderAutoOrganizePanel() {
+      const listContainer = document.getElementById('auto-organize-list');
+      if (!listContainer) return;
+
+      listContainer.innerHTML = '';
+      const activeCriteria = AppState.availableCriteria.filter(c => c.active);
+
+      if (activeCriteria.length === 0) {
+        listContainer.innerHTML = `<p class="text-[11px] text-slate-500 italic p-2 border border-dashed border-slate-800 rounded">Cap criteri seleccionat. Prem "Triar" per activar metadades.</p>`;
+        return;
+      }
+
+      activeCriteria.forEach(crit => {
+        const btn = document.createElement('button');
+        btn.className = "w-full text-left text-xs bg-slate-800/80 hover:bg-slate-800 border border-slate-700/60 hover:border-blue-500/50 text-slate-200 py-1.5 px-2.5 rounded-md flex items-center justify-between transition";
+        btn.innerHTML = `
+          <span class="flex items-center gap-2">
+            <i data-lucide="${crit.icon}" class="w-3.5 h-3.5 ${crit.color}"></i>
+            ${crit.name}
+          </span>
+          <i data-lucide="chevron-right" class="w-3.5 h-3.5 text-slate-500"></i>
+        `;
+
+        btn.addEventListener('click', () => executeAutoOrganize(crit.id));
+        listContainer.appendChild(btn);
+      });
+
+      refreshIcons();
+    }
+
+    async function executeAutoOrganize(criteriaId) {
+      if (AppState.photos.length === 0) return showAlert("Sense fotos", "Carrega primer algunes imatges!");
+
+      let count = 0;
+
+      AppState.photos.forEach(photo => {
+        let folderName = "/Altres";
+
+        switch (criteriaId) {
+          case 'dateYearMonth':
+            if (photo.exif && photo.exif.dateTaken) {
+              const d = photo.exif.dateTaken;
+              const y = d.getFullYear();
+              const m = String(d.getMonth() + 1).padStart(2, '0');
+              folderName = `/${y}/${y}-${m}`;
+            }
+            break;
+
+          case 'dateFull':
+            if (photo.exif && photo.exif.dateTaken) {
+              const d = photo.exif.dateTaken;
+              const y = d.getFullYear();
+              const m = String(d.getMonth() + 1).padStart(2, '0');
+              const day = String(d.getDate()).padStart(2, '0');
+              folderName = `/${y}/${y}-${m}/${y}-${m}-${day}`;
+            }
+            break;
+
+          case 'cameraModel':
+            const model = photo.exif && photo.exif.model ? photo.exif.model.replace(/[/\\?%*:|"<>]/g, '') : "Model_Desconegut";
+            folderName = `/Càmeres/${model}`;
+            break;
+
+          case 'isoValue':
+            const iso = photo.exif && photo.exif.iso ? `ISO_${photo.exif.iso}` : "ISO_Sense_Dades";
+            folderName = `/ISO/${iso}`;
+            break;
+
+          case 'lensModel':
+            const lens = photo.exif && photo.exif.lensModel && photo.exif.lensModel !== "Sense dades d'objectiu"
+              ? photo.exif.lensModel.replace(/[/\\?%*:|"<>]/g, '')
+              : "Objectiu_Generic";
+            folderName = `/Objectius/${lens}`;
+            break;
+
+          case 'orientation':
+            let type = "Horitzontal";
+            if (photo.exif.width < photo.exif.height) type = "Vertical";
+            else if (photo.exif.width === photo.exif.height) type = "Quadrat";
+            folderName = `/Orientacio/${type}`;
+            break;
+
+          case 'gpsLocation':
+            const hasGps = photo.exif && photo.exif.latitude !== null;
+            folderName = hasGps ? "/Ubicacio/Amb_GPS" : "/Ubicacio/Sense_GPS";
+            break;
+
+          case 'fStop':
+            const fval = photo.exif && photo.exif.fNumber ? photo.exif.fNumber.replace('/', '_') : "f_Sense_Dades";
+            folderName = `/Obertura/${fval}`;
+            break;
+
+          case 'focalLength':
+            const fl = photo.exif && photo.exif.focalLength ? photo.exif.focalLength : "Sense_Focal";
+            folderName = `/Focal/${fl}`;
+            break;
+        }
+
+        const parts = folderName.split('/').filter(Boolean);
+        let currentPath = "";
+        parts.forEach(p => {
+          currentPath += `/${p}`;
+          if (!AppState.folders.includes(currentPath)) AppState.folders.push(currentPath);
+        });
+
+        photo.folder = folderName;
+        count++;
+      });
+
+      renderFolderTree();
+      renderGallery();
+      await showAlert("Organització completada", `S'han agrupat ${count} imatges segons el criteri triat.`);
+    }
+
+    async function exportPhotosToZip(photosToExport, zipFilename = "Fotos_Organitzades_EXIF.zip") {
+      if (!photosToExport || photosToExport.length === 0) {
+        await showAlert("Sense fotos", "No hi ha imatges per exportar.");
+        return;
+      }
+
+      const zip = new JSZip();
+      photosToExport.forEach(photo => {
+        let zipPath = photo.name;
+        if (photo.folder && photo.folder !== '/') {
+          const cleanFolder = photo.folder.replace(/^\/+/, '');
+          zipPath = `${cleanFolder}/${photo.name}`;
+        }
+        zip.file(zipPath, photo.file);
+      });
+
+      const content = await zip.generateAsync({ type: "blob" });
+      saveAs(content, zipFilename);
+    }
+
+    async function exportToZip() {
+      await exportPhotosToZip(AppState.photos, "Fotos_Organitzades_EXIF.zip");
+    }
+
+    async function exportToPhysicalFolder(photosToExport) {
+      if (photosToExport.length === 0) {
+        await showAlert("Sense Selecció", "Selecciona almenys una imatge per desar al disc dur.");
+        return;
+      }
+
+      if (!('showDirectoryPicker' in window)) {
+        const fallback = await showConfirm(
+          "Navegador No Compatible",
+          "El teu navegador no permet la selecció directa de carpetes al disc dur.\n\nVols descarregar les fotos seleccionades en un fitxer ZIP?",
+          false
+        );
+        if (fallback) {
+          await exportPhotosToZip(photosToExport, "Fotos_Seleccionades_EXIF.zip");
+        }
+        return;
+      }
+
+      try {
+        const dirHandle = await window.showDirectoryPicker({
+          mode: 'readwrite',
+          startIn: 'pictures'
+        });
+
+        let savedCount = 0;
+
+        for (const photo of photosToExport) {
+          let currentDir = dirHandle;
+
+          if (photo.folder && photo.folder !== '/') {
+            const folderSegments = photo.folder.split('/').filter(Boolean);
+            for (const segment of folderSegments) {
+              currentDir = await currentDir.getDirectoryHandle(segment, { create: true });
+            }
+          }
+
+          const fileHandle = await currentDir.getFileHandle(photo.name, { create: true });
+          const writable = await fileHandle.createWritable();
+          await writable.write(photo.file);
+          await writable.close();
+          savedCount++;
+        }
+
+        await showAlert(
+          "Exportació a Disc Dur Completada",
+          `S'han desat correctament ${savedCount} fotografies a la carpeta física del teu disc dur (amb l'estructura de carpetes conservada).`
+        );
+      } catch (err) {
+        if (err.name === 'AbortError') return;
+
+        console.warn("Error al desar carpeta física:", err);
+
+        if (err.name === 'SecurityError' || (err.message && err.message.includes('sub frames'))) {
+          const fallback = await showConfirm(
+            "Restricció de Seguretat (iFrame)",
+            "El navegador no permet escollir carpetes físiques quan l'aplicació s'executa dins d'una finestra integrada (iFrame).\n\nVols descarregar les fotos seleccionades en un fitxer ZIP organitzat per carpetes?",
+            false
+          );
+          if (fallback) {
+            await exportPhotosToZip(photosToExport, "Fotos_Seleccionades_EXIF.zip");
+          }
+        } else {
+          await showAlert("Error en l'operació", "No s'han pogut moure o desar els fitxers: " + err.message);
+        }
+      }
+    }
+
+    function openCriteriaModal() {
+      const modal = document.getElementById('criteria-modal');
+      const listEl = document.getElementById('criteria-checkbox-list');
+
+      listEl.innerHTML = '';
+      AppState.availableCriteria.forEach(crit => {
+        const item = document.createElement('label');
+        item.className = "flex items-center justify-between p-2 rounded bg-slate-800/60 hover:bg-slate-800 border border-slate-700/50 cursor-pointer transition";
+        item.innerHTML = `
+          <span class="flex items-center gap-2">
+            <i data-lucide="${crit.icon}" class="w-4 h-4 ${crit.color}"></i>
+            <span>${crit.name}</span>
+          </span>
+          <input type="checkbox" data-crit-id="${crit.id}" ${crit.active ? 'checked' : ''} class="w-4 h-4 rounded text-blue-600 bg-slate-900 border-slate-700 focus:ring-0" />
+        `;
+        listEl.appendChild(item);
+      });
+
+      modal.classList.remove('hidden');
+      refreshIcons();
+    }
+
+    function openExifModal(photoId) {
+      const photo = AppState.photos.find(p => p.id === photoId);
+      if (!photo) return;
+
+      AppState.currentModalPhoto = photo;
+      const modal = document.getElementById('exif-modal');
+
+      document.getElementById('modal-photo-img').src = photo.url;
+      document.getElementById('modal-photo-name').textContent = photo.name;
+      document.getElementById('modal-photo-folder').textContent = photo.folder;
+      document.getElementById('modal-photo-size').textContent = formatBytes(photo.size);
+      document.getElementById('modal-photo-dim').textContent = photo.exif.width && photo.exif.height ? `${photo.exif.width} x ${photo.exif.height} (${photo.exif.megapixels} MP)` : 'Sense dades';
+      document.getElementById('modal-photo-date').textContent = formatDate(photo.exif.dateTaken);
+
+      document.getElementById('modal-exif-camera').textContent = `${photo.exif.make} ${photo.exif.model}`;
+      document.getElementById('modal-exif-lens').textContent = photo.exif.lensModel || 'Desconegut';
+      document.getElementById('modal-exif-iso').textContent = photo.exif.iso ? `ISO ${photo.exif.iso}` : '-';
+      document.getElementById('modal-exif-aperture').textContent = photo.exif.fNumber || '-';
+      document.getElementById('modal-exif-shutter').textContent = photo.exif.exposureTime || '-';
+      document.getElementById('modal-exif-focal').textContent = photo.exif.focalLength || '-';
+
+      const mapContainer = document.getElementById('leaflet-map');
+      const noGpsEl = document.getElementById('no-gps-msg');
+
+      if (photo.exif.latitude !== null && photo.exif.longitude !== null) {
+        noGpsEl.classList.add('hidden');
+        mapContainer.classList.remove('hidden');
+
+        if (!AppState.leafletMap) {
+          AppState.leafletMap = L.map('leaflet-map').setView([photo.exif.latitude, photo.exif.longitude], 13);
+          L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '© OpenStreetMap'
+          }).addTo(AppState.leafletMap);
+          AppState.leafletMarker = L.marker([photo.exif.latitude, photo.exif.longitude]).addTo(AppState.leafletMap);
+        } else {
+          AppState.leafletMap.setView([photo.exif.latitude, photo.exif.longitude], 13);
+          AppState.leafletMarker.setLatLng([photo.exif.latitude, photo.exif.longitude]);
+          setTimeout(() => AppState.leafletMap.invalidateSize(), 200);
+        }
+      } else {
+        mapContainer.classList.add('hidden');
+        noGpsEl.classList.remove('hidden');
+      }
+
+      document.getElementById('input-modal-exif-search').value = '';
+      renderFullExifTable('');
+
+      modal.classList.remove('hidden');
+      refreshIcons();
+    }
+
+    function closeExifModal() {
+      document.getElementById('exif-modal').classList.add('hidden');
+      AppState.currentModalPhoto = null;
+    }
+
+    function renderFullExifTable(filterText = '') {
+      const photo = AppState.currentModalPhoto;
+      if (!photo) return;
+
+      const fullExifEl = document.getElementById('modal-full-exif');
+      fullExifEl.innerHTML = '';
+
+      const tags = photo.exif.rawTags || {};
+      const entries = Object.entries(tags);
+
+      let matches = 0;
+      if (entries.length > 0) {
+        entries.forEach(([key, val]) => {
+          if (typeof val === 'function') return;
+
+          const displayVal = parseExifValue(val);
+          if (displayVal === null || displayVal === undefined) return;
+
+          const searchStr = filterText.toLowerCase();
+          if (searchStr && !key.toLowerCase().includes(searchStr) && !String(displayVal).toLowerCase().includes(searchStr)) {
+            return;
+          }
+
+          matches++;
+          const row = document.createElement('div');
+          row.className = "flex justify-between border-b border-slate-800/60 py-1 px-1 hover:bg-slate-800/40 rounded transition";
+          row.innerHTML = `<span class="text-slate-400 font-semibold select-all">${key}:</span><span class="text-blue-300 font-mono truncate max-w-[240px] select-all" title="${String(displayVal)}">${String(displayVal)}</span>`;
+          fullExifEl.appendChild(row);
+        });
+      }
+
+      if (matches === 0) {
+        fullExifEl.innerHTML = `<div class="p-3 text-center text-slate-500 italic">No s'han trobat etiquetes EXIF que coincideixin amb la cerca.</div>`;
+      }
+    }
+
+    function getFilteredAndSortedPhotos() {
+      let photos = AppState.photos.filter(p => p.folder === AppState.currentFolder);
+
+      if (AppState.searchQuery.trim()) {
+        const q = AppState.searchQuery.toLowerCase().trim();
+        photos = photos.filter(p => 
+          p.name.toLowerCase().includes(q) ||
+          p.exif.make.toLowerCase().includes(q) ||
+          p.exif.model.toLowerCase().includes(q) ||
+          p.exif.lensModel.toLowerCase().includes(q) ||
+          (p.exif.iso && String(p.exif.iso).includes(q))
+        );
+      }
+
+      photos.sort((a, b) => {
+        switch (AppState.sortBy) {
+          case 'exifDateDesc': return (b.exif.dateTaken || 0) - (a.exif.dateTaken || 0);
+          case 'exifDateAsc': return (a.exif.dateTaken || 0) - (b.exif.dateTaken || 0);
+          case 'nameAsc': return a.name.localeCompare(b.name);
+          case 'nameDesc': return b.name.localeCompare(a.name);
+          case 'sizeDesc': return b.size - a.size;
+          case 'sizeAsc': return a.size - b.size;
+          case 'cameraModel': return `${a.exif.make} ${a.exif.model}`.localeCompare(`${b.exif.make} ${b.exif.model}`);
+          case 'isoValue': return (b.exif.iso || 0) - (a.exif.iso || 0);
+          case 'apertureValue': return (a.exif.fNumberNum || 999) - (b.exif.fNumberNum || 999);
+          case 'focalLengthValue': return (b.exif.focalLengthNum || 0) - (a.exif.focalLengthNum || 0);
+          case 'resolutionValue': return (b.exif.megapixels || 0) - (a.exif.megapixels || 0);
+          default: return 0;
+        }
+      });
+
+      return photos;
+    }
+
+    function toggleSelectPhoto(photoId, event, displayedPhotos) {
+      if (event && event.shiftKey && AppState.lastSelectedId) {
+        const currentIndex = displayedPhotos.findIndex(p => p.id === photoId);
+        const lastIndex = displayedPhotos.findIndex(p => p.id === AppState.lastSelectedId);
+        if (currentIndex !== -1 && lastIndex !== -1) {
+          const start = Math.min(currentIndex, lastIndex);
+          const end = Math.max(currentIndex, lastIndex);
+          for (let i = start; i <= end; i++) {
+            AppState.selectedPhotoIds.add(displayedPhotos[i].id);
+          }
+        } else {
+          if (AppState.selectedPhotoIds.has(photoId)) AppState.selectedPhotoIds.delete(photoId);
+          else AppState.selectedPhotoIds.add(photoId);
+          AppState.lastSelectedId = photoId;
+        }
+      } else {
+        if (AppState.selectedPhotoIds.has(photoId)) AppState.selectedPhotoIds.delete(photoId);
+        else AppState.selectedPhotoIds.add(photoId);
+        AppState.lastSelectedId = photoId;
+      }
+      renderGallery();
+    }
+
+    async function deleteSinglePhoto(photoId) {
+      const photo = AppState.photos.find(p => p.id === photoId);
+      if (!photo) return;
+      const confirmed = await showConfirm("Eliminar Imatge", `Estàs segur de voler eliminar "${photo.name}"?`);
+      if (confirmed) {
+        AppState.photos = AppState.photos.filter(p => p.id !== photoId);
+        AppState.selectedPhotoIds.delete(photoId);
+        document.getElementById('stat-total-photos').textContent = AppState.photos.length;
+        renderFolderTree();
+        renderGallery();
+      }
+    }
+
+    async function batchDelete() {
+      const selectedIds = Array.from(AppState.selectedPhotoIds);
+      if (selectedIds.length === 0) return;
+
+      const confirmed = await showConfirm("Eliminar Imatges Seleccionades", `Estàs segur de voler eliminar les ${selectedIds.length} imatges seleccionades?`);
+      if (confirmed) {
+        AppState.photos = AppState.photos.filter(p => !AppState.selectedPhotoIds.has(p.id));
+        AppState.selectedPhotoIds.clear();
+        document.getElementById('stat-total-photos').textContent = AppState.photos.length;
+        renderFolderTree();
+        renderGallery();
+      }
+    }
+
+    async function batchRename() {
+      const selectedIds = Array.from(AppState.selectedPhotoIds);
+      if (selectedIds.length === 0) return;
+
+      const prefix = await showPrompt(
+        "Canviar Noms en Massa",
+        "Introdueix un prefix o nom base per a les imatges seleccionades (ex: 'Viatge_2024'):",
+        "Foto"
+      );
+
+      if (prefix !== null && prefix.trim() !== "") {
+        let index = 1;
+        AppState.photos.forEach(p => {
+          if (AppState.selectedPhotoIds.has(p.id)) {
+            const ext = p.name.includes('.') ? p.name.substring(p.name.lastIndexOf('.')) : '.jpg';
+            p.name = `${prefix.trim()}_${String(index).padStart(3, '0')}${ext}`;
+            index++;
+          }
+        });
+        renderGallery();
+      }
+    }
+
+    function updateBatchToolbar() {
+      const toolbar = document.getElementById('batch-toolbar');
+      const countEl = document.getElementById('batch-count');
+      const selectedCount = AppState.selectedPhotoIds.size;
+
+      if (selectedCount > 0) {
+        toolbar.classList.remove('hidden');
+        countEl.textContent = `${selectedCount} seleccionat${selectedCount > 1 ? 's' : ''}`;
+      } else {
+        toolbar.classList.add('hidden');
+      }
+    }
+
+    function renderGallery() {
+      const emptyState = document.getElementById('empty-state');
+      const galleryGrid = document.getElementById('gallery-grid');
+      
+      const currentPhotos = getFilteredAndSortedPhotos();
+
+      if (currentPhotos.length === 0) {
+        emptyState.classList.remove('hidden');
+        galleryGrid.classList.add('hidden');
+        galleryGrid.innerHTML = '';
+        updateBatchToolbar();
+        return;
+      }
+
+      emptyState.classList.add('hidden');
+      galleryGrid.classList.remove('hidden');
+      galleryGrid.innerHTML = '';
+
+      if (AppState.viewMode === 'list') {
+        galleryGrid.className = "flex flex-col space-y-2";
+      } else {
+        galleryGrid.className = "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-4";
+      }
+
+      currentPhotos.forEach(photo => {
+        const isSelected = AppState.selectedPhotoIds.has(photo.id);
+
+        const card = document.createElement('div');
+        card.setAttribute('draggable', 'true');
+        card.dataset.photoId = photo.id;
+
+        if (AppState.viewMode === 'grid') {
+          card.className = `group relative rounded-xl overflow-hidden bg-slate-900 border transition-all cursor-pointer select-none flex flex-col ${
+            isSelected ? 'border-blue-500 ring-2 ring-blue-500/50 shadow-lg shadow-blue-500/10' : 'border-slate-800 hover:border-slate-700'
+          }`;
+
+          card.innerHTML = `
+            <div class="aspect-square relative overflow-hidden bg-slate-950">
+              <img src="${photo.url}" alt="${photo.name}" class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" loading="lazy" />
+              
+              <div class="absolute top-2 left-2 z-10">
+                <input type="checkbox" ${isSelected ? 'checked' : ''} class="w-4 h-4 rounded text-blue-600 bg-slate-900/80 border-slate-700 focus:ring-0 cursor-pointer photo-checkbox" />
+              </div>
+
+              <div class="absolute top-2 right-2 z-10 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
+                <button class="btn-delete-single p-1.5 bg-slate-900/80 hover:bg-rose-600 text-slate-200 hover:text-white rounded-md backdrop-blur-sm transition" title="Eliminar foto">
+                  <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                </button>
+              </div>
+
+              ${photo.exif.latitude !== null ? `
+                <div class="absolute bottom-2 right-2 bg-slate-900/80 text-teal-400 p-1 rounded backdrop-blur-sm" title="Ubicació GPS disponible">
+                  <i data-lucide="map-pin" class="w-3.5 h-3.5"></i>
+                </div>
+              ` : ''}
+            </div>
+
+            <div class="p-2.5 flex-1 flex flex-col justify-between text-xs bg-slate-900">
+              <p class="font-medium text-slate-200 truncate mb-1" title="${photo.name}">${photo.name}</p>
+              <div class="text-[11px] text-slate-400 space-y-0.5">
+                <p class="truncate text-slate-400">${photo.exif.make} ${photo.exif.model}</p>
+                <div class="flex items-center justify-between text-[10px] text-slate-500 pt-1 border-t border-slate-800">
+                  <span>${photo.exif.iso ? `ISO ${photo.exif.iso}` : formatBytes(photo.size)}</span>
+                  <span>${photo.exif.fNumber || ''}</span>
+                </div>
+              </div>
+            </div>
+          `;
+        } else {
+          card.className = `group relative rounded-lg p-2.5 bg-slate-900 border transition-all cursor-pointer select-none flex items-center justify-between gap-3 ${
+            isSelected ? 'border-blue-500 ring-1 ring-blue-500/50 bg-blue-950/20' : 'border-slate-800 hover:border-slate-700'
+          }`;
+
+          card.innerHTML = `
+            <div class="flex items-center gap-3 overflow-hidden">
+              <input type="checkbox" ${isSelected ? 'checked' : ''} class="w-4 h-4 rounded text-blue-600 bg-slate-900 border-slate-700 focus:ring-0 cursor-pointer photo-checkbox" />
+              <img src="${photo.url}" alt="${photo.name}" class="w-10 h-10 object-cover rounded-md bg-slate-950 shrink-0" />
+              <div class="overflow-hidden">
+                <p class="font-medium text-xs text-slate-200 truncate" title="${photo.name}">${photo.name}</p>
+                <p class="text-[11px] text-slate-400 truncate">${photo.exif.make} ${photo.exif.model} • ${photo.exif.iso ? `ISO ${photo.exif.iso}` : ''} ${photo.exif.fNumber ? `• ${photo.exif.fNumber}` : ''}</p>
+              </div>
+            </div>
+
+            <div class="flex items-center gap-4 text-xs text-slate-400 shrink-0">
+              <span class="hidden md:inline">${formatDate(photo.exif.dateTaken)}</span>
+              <span>${formatBytes(photo.size)}</span>
+              <button class="btn-delete-single p-1.5 hover:text-rose-400 transition" title="Eliminar foto">
+                <i data-lucide="trash-2" class="w-4 h-4"></i>
+              </button>
+            </div>
+          `;
+        }
+
+        card.addEventListener('click', (e) => {
+          if (e.target.closest('.btn-delete-single')) {
+            e.stopPropagation();
+            deleteSinglePhoto(photo.id);
+            return;
+          }
+          toggleSelectPhoto(photo.id, e, currentPhotos);
+        });
+
+        card.addEventListener('dblclick', () => {
+          openExifModal(photo.id);
+        });
+
+        card.addEventListener('dragstart', (e) => {
+          e.dataTransfer.setData('text/plain', photo.id);
+        });
+
+        galleryGrid.appendChild(card);
+      });
+
+      updateBatchToolbar();
+      refreshIcons();
+    }
+
+    function setupDragAndDrop() {
+      const dropTarget = document.getElementById('drop-target');
+      const dragOverlay = document.getElementById('drag-overlay');
+
+      let dragCounter = 0;
+
+      window.addEventListener('dragenter', (e) => {
+        e.preventDefault();
+        dragCounter++;
+        if (dragOverlay) dragOverlay.classList.remove('opacity-0', 'pointer-events-none');
+      });
+
+      window.addEventListener('dragleave', (e) => {
+        e.preventDefault();
+        dragCounter--;
+        if (dragCounter <= 0) {
+          dragCounter = 0;
+          if (dragOverlay) dragOverlay.classList.add('opacity-0', 'pointer-events-none');
+        }
+      });
+
+      window.addEventListener('dragover', (e) => {
+        e.preventDefault();
+      });
+
+      window.addEventListener('drop', async (e) => {
+        e.preventDefault();
+        dragCounter = 0;
+        if (dragOverlay) dragOverlay.classList.add('opacity-0', 'pointer-events-none');
+
+        if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+          const files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/'));
+          if (files.length > 0) {
+            await importFiles(files);
+          }
+        }
+      });
+    }
+
+    async function loadDemoPhotos() {
+      const demoImagesData = [
+        { name: "Muntanya_Pirineus.jpg", camera: "Canon EOS R5", lens: "RF 24-70mm F2.8 L IS USM", iso: 100, f: "2.8", shutter: "1/1000s", date: "2023:07:15 10:30:00", lat: 42.5063, lng: 1.5218, color: "#1e3a8a", text: "Pirineus (2023)" },
+        { name: "Platja_Costa_Brava.jpg", camera: "Sony A7 IV", lens: "FE 16-35mm F2.8 GM", iso: 200, f: "8.0", shutter: "1/500s", date: "2023:08:20 17:45:00", lat: 41.9961, lng: 3.2045, color: "#0284c7", text: "Costa Brava" },
+        { name: "Carrer_Barcelona.jpg", camera: "Fujifilm X-T4", lens: "XF 23mm F1.4 R LM WR", iso: 400, f: "4.0", shutter: "1/250s", date: "2024:02:10 14:15:00", lat: 41.3879, lng: 2.1699, color: "#d97706", text: "Barcelona Street" },
+        { name: "Retrat_Estudi.jpg", camera: "Sony A7 IV", lens: "FE 85mm F1.4 GM", iso: 100, f: "1.4", shutter: "1/160s", date: "2024:03:05 11:00:00", lat: null, lng: null, color: "#4c1d95", text: "Studio Portrait" },
+        { name: "Natura_Montseny.jpg", camera: "Canon EOS R5", lens: "RF 70-200mm F2.8 L IS USM", iso: 800, f: "5.6", shutter: "1/125s", date: "2024:05:01 09:20:00", lat: 41.7801, lng: 2.4332, color: "#15803d", text: "Montseny Forest" }
+      ];
+
+      const demoFiles = [];
+      for (const demo of demoImagesData) {
+        const canvas = document.createElement('canvas');
+        canvas.width = 800;
+        canvas.height = 600;
+        const ctx = canvas.getContext('2d');
+
+        ctx.fillStyle = demo.color;
+        ctx.fillRect(0, 0, 800, 600);
+
+        ctx.fillStyle = "#ffffff";
+        ctx.font = "bold 36px sans-serif";
+        ctx.textAlign = "center";
+        ctx.fillText(demo.text, 400, 280);
+
+        ctx.font = "20px sans-serif";
+        ctx.fillText(`${demo.camera} | ${demo.lens}`, 400, 330);
+
+        const blob = await new Promise(res => canvas.toBlob(res, 'image/jpeg'));
+        const file = new File([blob], demo.name, { type: 'image/jpeg', lastModified: 1715000000000 });
+
+        demoFiles.push(file);
+      }
+
+      await importFiles(demoFiles);
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      setupDragAndDrop();
+
+      document.getElementById('btn-create-folder').addEventListener('click', async () => {
+        const name = await showPrompt("Nova Carpeta", "Introdueix el nom de la nova carpeta:");
+        if (name) createFolder(name);
+      });
+
+      document.getElementById('btn-config-criteria').addEventListener('click', openCriteriaModal);
+      document.getElementById('btn-close-criteria-modal').addEventListener('click', () => {
+        document.getElementById('criteria-modal').classList.add('hidden');
+      });
+
+      document.getElementById('btn-save-criteria').addEventListener('click', () => {
+        const checkboxes = document.querySelectorAll('#criteria-checkbox-list input[type="checkbox"]');
+        checkboxes.forEach(chk => {
+          const id = chk.getAttribute('data-crit-id');
+          const crit = AppState.availableCriteria.find(c => c.id === id);
+          if (crit) crit.active = chk.checked;
+        });
+
+        document.getElementById('criteria-modal').classList.add('hidden');
+        renderAutoOrganizePanel();
+      });
+
+      document.getElementById('btn-close-exif-modal').addEventListener('click', closeExifModal);
+      document.getElementById('input-modal-exif-search').addEventListener('input', (e) => {
+        renderFullExifTable(e.target.value);
+      });
+
+      document.getElementById('btn-batch-export-disk').addEventListener('click', () => {
+        const selectedPhotos = AppState.photos.filter(p => AppState.selectedPhotoIds.has(p.id));
+        exportToPhysicalFolder(selectedPhotos);
+      });
+
+      document.getElementById('btn-batch-rename').addEventListener('click', batchRename);
+      document.getElementById('btn-batch-delete').addEventListener('click', batchDelete);
+      document.getElementById('btn-deselect-all').addEventListener('click', () => {
+        AppState.selectedPhotoIds.clear();
+        renderGallery();
+      });
+
+      document.getElementById('select-move-folder').addEventListener('change', (e) => {
+        const targetFolder = e.target.value;
+        if (!targetFolder) return;
+        AppState.photos.forEach(p => {
+          if (AppState.selectedPhotoIds.has(p.id)) p.folder = targetFolder;
+        });
+        e.target.value = '';
+        renderFolderTree();
+        renderGallery();
+      });
+
+      const handleFileInput = async (e) => {
+        if (e.target.files && e.target.files.length > 0) {
+          const files = Array.from(e.target.files).filter(f => f.type.startsWith('image/'));
+          await importFiles(files);
+        }
+      };
+
+      document.getElementById('input-files').addEventListener('change', handleFileInput);
+      document.getElementById('empty-input-files').addEventListener('change', handleFileInput);
+      document.getElementById('input-folder').addEventListener('change', handleFileInput);
+
+      document.getElementById('btn-load-demo').addEventListener('click', loadDemoPhotos);
+      document.getElementById('empty-btn-demo').addEventListener('click', loadDemoPhotos);
+
+      document.getElementById('btn-export-zip').addEventListener('click', exportToZip);
+
+      document.getElementById('input-search').addEventListener('input', (e) => {
+        AppState.searchQuery = e.target.value;
+        renderGallery();
+      });
+
+      document.getElementById('select-sort-by').addEventListener('change', (e) => {
+        AppState.sortBy = e.target.value;
+        renderGallery();
+      });
+
+      document.getElementById('btn-view-grid').addEventListener('click', () => {
+        AppState.viewMode = 'grid';
+        document.getElementById('btn-view-grid').classList.add('bg-slate-700', 'text-white');
+        document.getElementById('btn-view-list').classList.remove('bg-slate-700', 'text-white');
+        renderGallery();
+      });
+
+      document.getElementById('btn-view-list').addEventListener('click', () => {
+        AppState.viewMode = 'list';
+        document.getElementById('btn-view-list').classList.add('bg-slate-700', 'text-white');
+        document.getElementById('btn-view-grid').classList.remove('bg-slate-700', 'text-white');
+        renderGallery();
+      });
+
+      renderFolderTree();
+      renderGallery();
+      renderAutoOrganizePanel();
+      refreshIcons();
+    });
+  </script>
+</body>
+</html>
