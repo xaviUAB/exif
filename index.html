@@ -846,9 +846,9 @@
       const sortedFolders = [...AppState.folders].sort();
 
       sortedFolders.forEach(folderPath => {
-        const count = AppState.photos.filter(p => p.folder === folderPath).length;
-        const isActive = AppState.currentFolder === folderPath;
         const isRoot = folderPath === "/";
+        const count = isRoot ? AppState.photos.length : AppState.photos.filter(p => p.folder === folderPath).length;
+        const isActive = AppState.currentFolder === folderPath;
         const folderName = isRoot ? "Totes les Fotos (/)" : folderPath.split('/').pop();
         const depth = isRoot ? 0 : folderPath.split('/').length - 2;
 
@@ -927,271 +927,362 @@
       refreshIcons();
     }
 
-    function updateMoveDropdown() {
-      const selectMove = document.getElementById('select-move-folder');
-      if (!selectMove) return;
-      selectMove.innerHTML = '<option value="">-- Moure a la carpeta... --</option>';
-      AppState.folders.forEach(f => {
-        const option = document.createElement('option');
-        option.value = f;
-        option.textContent = f === "/" ? "/ (Arrel)" : f;
-        selectMove.appendChild(option);
-      });
-    }
+    async function importFiles(files) {
+      if (!files || files.length === 0) return;
 
-    function movePhotoToFolder(photoId, targetFolder) {
-      const photo = AppState.photos.find(p => p.id === photoId);
-      if (photo) {
-        photo.folder = targetFolder;
-        renderFolderTree();
-        renderGallery();
-      }
-    }
+      const currentFingerprints = new Set(AppState.photos.map(p => p.fingerprint));
+      let addedCount = 0;
 
-    function renderAutoOrganizePanel() {
-      const listContainer = document.getElementById('auto-organize-list');
-      if (!listContainer) return;
-
-      listContainer.innerHTML = '';
-      const activeCriteria = AppState.availableCriteria.filter(c => c.active);
-
-      if (activeCriteria.length === 0) {
-        listContainer.innerHTML = `<p class="text-[11px] text-slate-500 italic p-2 border border-dashed border-slate-800 rounded">Cap criteri seleccionat. Prem "Triar" per activar metadades.</p>`;
-        return;
-      }
-
-      activeCriteria.forEach(crit => {
-        const btn = document.createElement('button');
-        btn.className = "w-full text-left text-xs bg-slate-800/80 hover:bg-slate-800 border border-slate-700/60 hover:border-blue-500/50 text-slate-200 py-1.5 px-2.5 rounded-md flex items-center justify-between transition";
-        btn.innerHTML = `
-          <span class="flex items-center gap-2">
-            <i data-lucide="${crit.icon}" class="w-3.5 h-3.5 ${crit.color}"></i>
-            ${crit.name}
-          </span>
-          <i data-lucide="chevron-right" class="w-3.5 h-3.5 text-slate-500"></i>
-        `;
-
-        btn.addEventListener('click', () => executeAutoOrganize(crit.id));
-        listContainer.appendChild(btn);
-      });
-
-      refreshIcons();
-    }
-
-    async function executeAutoOrganize(criteriaId) {
-      if (AppState.photos.length === 0) return showAlert("Sense fotos", "Carrega primer algunes imatges!");
-
-      AppState.photos.forEach(photo => {
-        let folderName = "/Altres";
-
-        switch (criteriaId) {
-          case 'dateYearMonth':
-            if (photo.exif && photo.exif.dateTaken) {
-              const d = photo.exif.dateTaken;
-              const y = d.getFullYear();
-              const m = String(d.getMonth() + 1).padStart(2, '0');
-              folderName = `/${y}/${y}-${m}`;
+      for (const file of files) {
+        let folderPath = "/";
+        
+        // Conservar l'estructura de carpetes si els fitxers provenen del botó "Carregar Carpeta"
+        if (file.webkitRelativePath) {
+          const parts = file.webkitRelativePath.split('/');
+          if (parts.length > 1) {
+            parts.pop(); // Traiem el nom del fitxer al final de la ruta
+            let currentPath = "";
+            for (const part of parts) {
+              currentPath += `/${part}`;
+              if (!AppState.folders.includes(currentPath)) {
+                AppState.folders.push(currentPath);
+              }
             }
-            break;
-
-          case 'dateFull':
-            if (photo.exif && photo.exif.dateTaken) {
-              const d = photo.exif.dateTaken;
-              const y = d.getFullYear();
-              const m = String(d.getMonth() + 1).padStart(2, '0');
-              const day = String(d.getDate()).padStart(2, '0');
-              folderName = `/${y}/${y}-${m}/${y}-${m}-${day}`;
-            }
-            break;
-
-          case 'cameraModel':
-            const model = photo.exif && photo.exif.model ? photo.exif.model.replace(/[/\\?%*:|"<>]/g, '') : "Model_Desconegut";
-            folderName = `/Càmeres/${model}`;
-            break;
-
-          case 'isoValue':
-            const iso = photo.exif && photo.exif.iso ? `ISO_${photo.exif.iso}` : "ISO_Sense_Dades";
-            folderName = `/ISO/${iso}`;
-            break;
-
-          case 'lensModel':
-            const lens = photo.exif && photo.exif.lensModel && photo.exif.lensModel !== "Sense dades d'objectiu"
-              ? photo.exif.lensModel.replace(/[/\\?%*:|"<>]/g, '')
-              : "Objectiu_Generic";
-            folderName = `/Objectius/${lens}`;
-            break;
-
-          case 'orientation':
-            let type = "Horitzontal";
-            if (photo.exif.width < photo.exif.height) type = "Vertical";
-            else if (photo.exif.width === photo.exif.height) type = "Quadrat";
-            folderName = `/Orientacio/${type}`;
-            break;
-
-          case 'gpsLocation':
-            const hasGps = photo.exif && photo.exif.latitude !== null;
-            folderName = hasGps ? "/Ubicacio/Amb_GPS" : "/Ubicacio/Sense_GPS";
-            break;
-
-          case 'fStop':
-            const fval = photo.exif && photo.exif.fNumber ? photo.exif.fNumber.replace('/', '_') : "f_Sense_Dades";
-            folderName = `/Obertura/${fval}`;
-            break;
-
-          case 'focalLength':
-            const fl = photo.exif && photo.exif.focalLength ? photo.exif.focalLength : "Sense_Focal";
-            folderName = `/Focal/${fl}`;
-            break;
-        }
-
-        const parts = folderName.split('/').filter(Boolean);
-        let currentPath = "";
-        parts.forEach(p => {
-          currentPath += `/${p}`;
-          if (!AppState.folders.includes(currentPath)) AppState.folders.push(currentPath);
-        });
-
-        photo.folder = folderName;
-      });
-
-      renderFolderTree();
-      renderGallery();
-    }
-
-    async function exportPhotosToZip(photosToExport, zipFilename = "Fotos_Organitzades_EXIF.zip") {
-      if (!photosToExport || photosToExport.length === 0) {
-        await showAlert("Sense fotos", "No hi ha imatges per exportar.");
-        return;
-      }
-
-      const zip = new JSZip();
-      photosToExport.forEach(photo => {
-        let zipPath = photo.name;
-        if (photo.folder && photo.folder !== '/') {
-          const cleanFolder = photo.folder.replace(/^\/+/, '');
-          zipPath = `${cleanFolder}/${photo.name}`;
-        }
-        zip.file(zipPath, photo.file);
-      });
-
-      const content = await zip.generateAsync({ type: "blob" });
-      saveAs(content, zipFilename);
-    }
-
-    async function exportToZip() {
-      await exportPhotosToZip(AppState.photos, "Fotos_Organitzades_EXIF.zip");
-    }
-
-    async function exportToPhysicalFolder(photosToExport) {
-      if (photosToExport.length === 0) {
-        await showAlert("Sense Selecció", "Selecciona almenys una imatge per desar al disc dur.");
-        return;
-      }
-
-      if (!('showDirectoryPicker' in window)) {
-        const fallback = await showConfirm(
-          "Navegador No Compatible",
-          "El teu navegador no permet la selecció directa de carpetes al disc dur.\n\nVols descarregar les fotos seleccionades en un fitxer ZIP?",
-          false
-        );
-        if (fallback) {
-          await exportPhotosToZip(photosToExport, "Fotos_Seleccionades_EXIF.zip");
-        }
-        return;
-      }
-
-      try {
-        const dirHandle = await window.showDirectoryPicker({
-          mode: 'readwrite',
-          startIn: 'pictures'
-        });
-
-        let savedCount = 0;
-
-        for (const photo of photosToExport) {
-          let currentDir = dirHandle;
-
-          if (photo.folder && photo.folder !== '/') {
-            const folderSegments = photo.folder.split('/').filter(Boolean);
-            for (const segment of folderSegments) {
-              currentDir = await currentDir.getDirectoryHandle(segment, { create: true });
-            }
+            folderPath = currentPath || "/";
           }
-
-          const fileHandle = await currentDir.getFileHandle(photo.name, { create: true });
-          const writable = await fileHandle.createWritable();
-          await writable.write(photo.file);
-          await writable.close();
-          savedCount++;
         }
 
-        await showAlert(
-          "Exportació a Disc Dur Completada",
-          `S'han desat correctament ${savedCount} fotografies a la carpeta física del teu disc dur (amb l'estructura de carpetes conservada).`
-        );
-      } catch (err) {
-        if (err.name === 'AbortError') return;
-
-        if (err.name === 'SecurityError' || (err.message && err.message.includes('sub frames'))) {
-          const fallback = await showConfirm(
-            "Restricció de Seguretat (iFrame)",
-            "El navegador no permet escollir carpetes físiques quan l'aplicació s'executa dins d'una finestra integrada (iFrame).\n\nVols descarregar les fotos seleccionades en un fitxer ZIP organitzat per carpetes?",
-            false
-          );
-          if (fallback) {
-            await exportPhotosToZip(photosToExport, "Fotos_Seleccionades_EXIF.zip");
-          }
-        } else {
-          await showAlert("Error en l'operació", "No s'han pogut moure o desar els fitxers: " + err.message);
+        const fingerprint = `${file.name}_${file.size}_${file.lastModified}`;
+        
+        // Evitar duplicats
+        if (!currentFingerprints.has(fingerprint)) {
+          // Processar les dades EXIF i afegir la foto al state
+          const photoData = await processImageFile(file, folderPath);
+          AppState.photos.push(photoData);
+          currentFingerprints.add(fingerprint);
+          addedCount++;
         }
       }
-    }
 
-    function openCriteriaModal() {
-      const modal = document.getElementById('criteria-modal');
-      const listEl = document.getElementById('criteria-checkbox-list');
-      if (!modal || !listEl) return;
-
-      listEl.innerHTML = '';
-      AppState.availableCriteria.forEach(crit => {
-        const item = document.createElement('label');
-        item.className = "flex items-center justify-between p-2 rounded bg-slate-800/60 hover:bg-slate-800 border border-slate-700/50 cursor-pointer transition";
-        item.innerHTML = `
-          <span class="flex items-center gap-2">
-            <i data-lucide="${crit.icon}" class="w-4 h-4 ${crit.color}"></i>
-            <span>${crit.name}</span>
-          </span>
-          <input type="checkbox" data-crit-id="${crit.id}" ${crit.active ? 'checked' : ''} class="w-4 h-4 rounded text-blue-600 bg-slate-900 border-slate-700 focus:ring-0" />
-        `;
-        listEl.appendChild(item);
-      });
-
-      modal.classList.remove('hidden');
-      refreshIcons();
-    }
-
-    async function deleteSinglePhoto(photoId) {
-      const photo = AppState.photos.find(p => p.id === photoId);
-      if (!photo) return;
-      const confirmed = await showConfirm("Eliminar Imatge", `Estàs segur de voler eliminar "${photo.name}" de la visualització?`);
-      if (confirmed) {
-        AppState.photos = AppState.photos.filter(p => p.id !== photoId);
-        AppState.selectedPhotoIds.delete(photoId);
+      if (addedCount > 0) {
         document.getElementById('stat-total-photos').textContent = AppState.photos.length;
         renderFolderTree();
         renderGallery();
       }
     }
 
-    async function batchDelete() {
-      const selectedIds = Array.from(AppState.selectedPhotoIds);
-      if (selectedIds.length === 0) return;
+    function openCriteriaModal() {
+      const listEl = document.getElementById('criteria-checkbox-list');
+      if (!listEl) return;
+      listEl.innerHTML = '';
+      
+      AppState.availableCriteria.forEach(c => {
+        listEl.innerHTML += `
+          <label class="flex items-center gap-2 cursor-pointer p-2 hover:bg-slate-800 rounded-lg transition">
+            <input type="checkbox" data-crit-id="${c.id}" ${c.active ? 'checked' : ''} class="w-4 h-4 rounded text-blue-600 bg-slate-900 border-slate-700 focus:ring-0 cursor-pointer" />
+            <i data-lucide="${c.icon}" class="w-4 h-4 ${c.color}"></i>
+            <span>${c.name}</span>
+          </label>
+        `;
+      });
+      document.getElementById('criteria-modal')?.classList.remove('hidden');
+      refreshIcons();
+    }
 
-      const confirmed = await showConfirm(
-        "Eliminar Imatges Seleccionades de la Visualització", 
-        `Estàs segur de voler eliminar les ${selectedIds.length} imatges seleccionades de la visualització?`
+    function renderAutoOrganizePanel() {
+      const list = document.getElementById('auto-organize-list');
+      if (!list) return;
+      list.innerHTML = '';
+      
+      AppState.availableCriteria.filter(c => c.active).forEach(c => {
+        const btn = document.createElement('button');
+        btn.className = "w-full text-left px-2.5 py-1.5 bg-slate-900/50 hover:bg-slate-800 text-xs text-slate-300 rounded-lg border border-slate-800 hover:border-slate-700 transition flex items-center gap-2";
+        btn.innerHTML = `<i data-lucide="${c.icon}" class="w-4 h-4 ${c.color}"></i> <span class="truncate">${c.name}</span>`;
+        btn.addEventListener('click', () => autoOrganize(c.id));
+        list.appendChild(btn);
+      });
+      refreshIcons();
+    }
+
+    function autoOrganize(criteriaId) {
+      AppState.photos.forEach(photo => {
+        let folderName = 'Altres';
+        const date = photo.exif.dateTaken;
+
+        switch (criteriaId) {
+          case 'dateYearMonth':
+            folderName = (date && !isNaN(date.getTime())) ? `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}` : 'Sense Data';
+            break;
+          case 'dateFull':
+            folderName = (date && !isNaN(date.getTime())) ? `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}` : 'Sense Data';
+            break;
+          case 'cameraModel':
+            folderName = photo.exif.model || 'Càmera Desconeguda';
+            break;
+          case 'isoValue':
+            folderName = photo.exif.iso ? `ISO ${photo.exif.iso}` : 'Sense ISO';
+            break;
+          case 'lensModel':
+            folderName = photo.exif.lensModel || 'Sense Objectiu';
+            break;
+          case 'orientation':
+            folderName = photo.exif.orientation || 'Orientació Desconeguda';
+            break;
+          case 'gpsLocation':
+            folderName = (photo.exif.latitude !== null && photo.exif.longitude !== null) ? 'Amb GPS' : 'Sense GPS';
+            break;
+          case 'fStop':
+            folderName = photo.exif.fNumber || 'Sense Obertura';
+            break;
+          case 'focalLength':
+            folderName = photo.exif.focalLength || 'Sense Distància Focal';
+            break;
+        }
+
+        const newPath = `/${folderName.replace(/\//g, '-')}`;
+        if (!AppState.folders.includes(newPath)) AppState.folders.push(newPath);
+        photo.folder = newPath;
+      });
+
+      renderFolderTree();
+      renderGallery();
+    }
+
+    function movePhotoToFolder(photoId, folderPath) {
+      const photo = AppState.photos.find(p => p.id === photoId);
+      if (photo) {
+        photo.folder = folderPath;
+        renderFolderTree();
+        renderGallery();
+      }
+    }
+
+    function updateMoveDropdown() {
+      const select = document.getElementById('select-move-folder');
+      if (!select) return;
+      select.innerHTML = '<option value="">-- Moure a la carpeta... --</option>';
+      AppState.folders.forEach(f => {
+        const opt = document.createElement('option');
+        opt.value = f;
+        opt.textContent = f === "/" ? "Arrel (/)" : f;
+        select.appendChild(opt);
+      });
+    }
+
+    function updateBatchToolbar() {
+      const tb = document.getElementById('batch-toolbar');
+      const counter = document.getElementById('batch-count');
+      if (!tb || !counter) return;
+
+      if (AppState.selectedPhotoIds.size > 0) {
+        tb.classList.remove('hidden');
+        counter.textContent = `${AppState.selectedPhotoIds.size} seleccionats`;
+      } else {
+        tb.classList.add('hidden');
+      }
+    }
+
+    function getFilteredAndSortedPhotos() {
+      let filtered = AppState.photos;
+      
+      if (AppState.currentFolder !== '/') {
+        filtered = filtered.filter(p => p.folder === AppState.currentFolder);
+      }
+
+      if (AppState.searchQuery) {
+        const q = AppState.searchQuery.toLowerCase();
+        filtered = filtered.filter(p => 
+          p.name.toLowerCase().includes(q) || 
+          p.exif.model?.toLowerCase().includes(q) || 
+          p.exif.make?.toLowerCase().includes(q)
+        );
+      }
+
+      return filtered.sort((a, b) => {
+        switch (AppState.sortBy) {
+          case 'exifDateDesc': return (b.exif.dateTaken?.getTime() || 0) - (a.exif.dateTaken?.getTime() || 0);
+          case 'exifDateAsc': return (a.exif.dateTaken?.getTime() || 0) - (b.exif.dateTaken?.getTime() || 0);
+          case 'nameAsc': return a.name.localeCompare(b.name);
+          case 'nameDesc': return b.name.localeCompare(a.name);
+          case 'sizeDesc': return b.size - a.size;
+          case 'sizeAsc': return a.size - b.size;
+          case 'cameraModel': return (a.exif.model || '').localeCompare(b.exif.model || '');
+          case 'isoValue': return (b.exif.iso || 0) - (a.exif.iso || 0);
+          case 'apertureValue': return (a.exif.fNumberNum || 0) - (b.exif.fNumberNum || 0);
+          case 'focalLengthValue': return (b.exif.focalLengthNum || 0) - (a.exif.focalLengthNum || 0);
+          case 'resolutionValue': return (b.exif.megapixels || 0) - (a.exif.megapixels || 0);
+          default: return 0;
+        }
+      });
+    }
+
+    function renderGallery() {
+      const grid = document.getElementById('gallery-grid');
+      const emptyState = document.getElementById('empty-state');
+      if (!grid || !emptyState) return;
+
+      const photos = getFilteredAndSortedPhotos();
+
+      if (photos.length === 0) {
+        grid.classList.add('hidden');
+        emptyState.classList.remove('hidden');
+      } else {
+        grid.classList.remove('hidden');
+        emptyState.classList.add('hidden');
+        grid.innerHTML = '';
+
+        if (AppState.viewMode === 'grid') {
+          grid.className = "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-4";
+        } else {
+          grid.className = "flex flex-col gap-2";
+        }
+
+        photos.forEach((photo, index) => {
+          grid.appendChild(createPhotoCard(photo, index, photos));
+        });
+      }
+      
+      updateBatchToolbar();
+    }
+
+    function toggleSelectPhoto(photoId, e = null) {
+      const photos = getFilteredAndSortedPhotos();
+      
+      if (e && e.shiftKey && AppState.lastSelectedId) {
+        const currentIndex = photos.findIndex(p => p.id === photoId);
+        const lastIndex = photos.findIndex(p => p.id === AppState.lastSelectedId);
+        
+        if (currentIndex !== -1 && lastIndex !== -1) {
+          const start = Math.min(currentIndex, lastIndex);
+          const end = Math.max(currentIndex, lastIndex);
+          const isCurrentlySelected = AppState.selectedPhotoIds.has(photoId);
+          
+          for (let i = start; i <= end; i++) {
+            if (!isCurrentlySelected) {
+              AppState.selectedPhotoIds.add(photos[i].id);
+            } else {
+              AppState.selectedPhotoIds.delete(photos[i].id);
+            }
+          }
+        }
+      } else {
+        if (AppState.selectedPhotoIds.has(photoId)) {
+          AppState.selectedPhotoIds.delete(photoId);
+        } else {
+          AppState.selectedPhotoIds.add(photoId);
+        }
+      }
+      
+      AppState.lastSelectedId = photoId;
+      renderGallery();
+      
+      const modalCheckbox = document.getElementById('modal-checkbox-select');
+      if (modalCheckbox && AppState.currentModalPhoto && AppState.currentModalPhoto.id === photoId) {
+        modalCheckbox.checked = AppState.selectedPhotoIds.has(photoId);
+      }
+    }
+
+    function createPhotoCard(photo, index, photoList) {
+      const isSelected = AppState.selectedPhotoIds.has(photo.id);
+      const isGrid = AppState.viewMode === 'grid';
+      
+      const el = document.createElement('div');
+      el.draggable = true;
+      el.addEventListener('dragstart', (e) => {
+        e.dataTransfer.setData('text/plain', photo.id);
+      });
+
+      if (isGrid) {
+        el.className = `group relative bg-slate-900 border rounded-xl overflow-hidden cursor-pointer hover:shadow-lg transition flex flex-col ${isSelected ? 'border-blue-500 shadow-blue-900/20 shadow-md ring-1 ring-blue-500' : 'border-slate-800 hover:border-slate-700'}`;
+        el.innerHTML = `
+          <div class="aspect-square bg-slate-950 relative overflow-hidden flex items-center justify-center">
+            <img src="${photo.url}" alt="${photo.name}" class="w-full h-full object-cover group-hover:scale-105 transition duration-300" loading="lazy" />
+            <div class="absolute inset-0 bg-gradient-to-b from-black/50 via-transparent to-black/60 opacity-0 group-hover:opacity-100 transition duration-200"></div>
+            
+            <button class="btn-select-toggle absolute top-2 left-2 p-1.5 rounded-lg bg-slate-900/50 backdrop-blur border border-slate-700/80 text-white ${isSelected ? 'opacity-100 bg-blue-600 border-blue-500' : 'opacity-0 group-hover:opacity-100 hover:bg-slate-800'}" title="Seleccionar">
+              <i data-lucide="${isSelected ? 'check-square' : 'square'}" class="w-4 h-4"></i>
+            </button>
+            <button class="btn-open-exif absolute top-2 right-2 p-1.5 rounded-lg bg-slate-900/50 backdrop-blur border border-slate-700/80 text-white opacity-0 group-hover:opacity-100 hover:bg-blue-600 hover:border-blue-500 transition" title="Veure Dades EXIF">
+              <i data-lucide="info" class="w-4 h-4"></i>
+            </button>
+            
+            <div class="absolute bottom-2 left-2 right-2 flex flex-col gap-0.5 opacity-0 group-hover:opacity-100 transition transform translate-y-2 group-hover:translate-y-0">
+              <span class="text-[10px] text-slate-300 font-medium bg-slate-900/80 backdrop-blur px-1.5 py-0.5 rounded truncate inline-block w-fit max-w-full">${photo.exif.model}</span>
+              ${photo.exif.lensModel && photo.exif.lensModel !== 'Sense dades d\'objectiu' ? `<span class="text-[9px] text-slate-400 bg-slate-900/80 backdrop-blur px-1.5 py-0.5 rounded truncate inline-block w-fit max-w-full">${photo.exif.lensModel}</span>` : ''}
+            </div>
+          </div>
+          <div class="p-2.5 flex-1 flex flex-col justify-between gap-1 bg-slate-900">
+            <h3 class="text-xs font-medium text-slate-200 truncate" title="${photo.name}">${photo.name}</h3>
+            <div class="flex items-center justify-between text-[10px] text-slate-500">
+              <span>${formatDate(photo.exif.dateTaken).split(',')[0]}</span>
+              <span>${formatBytes(photo.size)}</span>
+            </div>
+          </div>
+        `;
+      } else {
+        el.className = `group flex items-center p-2 gap-3 bg-slate-900 border rounded-xl hover:bg-slate-800/80 transition cursor-pointer ${isSelected ? 'border-blue-500 bg-blue-900/10 ring-1 ring-blue-500' : 'border-slate-800'}`;
+        el.innerHTML = `
+          <button class="btn-select-toggle p-1.5 rounded-lg text-slate-400 hover:text-white transition shrink-0">
+            <i data-lucide="${isSelected ? 'check-square' : 'square'}" class="w-5 h-5 ${isSelected ? 'text-blue-500' : ''}"></i>
+          </button>
+          <div class="w-12 h-12 rounded-lg bg-slate-950 overflow-hidden shrink-0 border border-slate-700">
+            <img src="${photo.url}" class="w-full h-full object-cover" loading="lazy" />
+          </div>
+          <div class="flex-1 min-w-0 grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 gap-2 items-center">
+            <div class="flex flex-col min-w-0">
+              <span class="text-xs font-medium text-slate-200 truncate">${photo.name}</span>
+              <span class="text-[10px] text-slate-500">${formatBytes(photo.size)} • ${photo.exif.megapixels} MP</span>
+            </div>
+            <div class="hidden sm:flex flex-col min-w-0 text-[11px] text-slate-400">
+              <span class="truncate text-slate-300">${photo.exif.model}</span>
+              <span class="truncate">${photo.exif.lensModel}</span>
+            </div>
+            <div class="hidden md:flex flex-col min-w-0 text-[11px] text-slate-400">
+              <span class="truncate">ISO ${photo.exif.iso || '-'} • ${photo.exif.fNumber || '-'}</span>
+              <span class="truncate">${photo.exif.exposureTime || '-'} • ${photo.exif.focalLength || '-'}</span>
+            </div>
+            <div class="flex flex-col min-w-0 text-[11px] text-slate-400 text-right pr-2">
+              <span>${formatDate(photo.exif.dateTaken)}</span>
+            </div>
+          </div>
+          <button class="btn-open-exif p-2 bg-slate-800 text-slate-300 hover:bg-blue-600 hover:text-white rounded-lg transition shrink-0" title="Veure Metadades">
+            <i data-lucide="info" class="w-4 h-4"></i>
+          </button>
+        `;
+      }
+
+      el.querySelector('.btn-select-toggle').addEventListener('click', (e) => {
+        e.stopPropagation();
+        toggleSelectPhoto(photo.id, e);
+      });
+      
+      el.addEventListener('click', (e) => {
+        if (!e.target.closest('.btn-open-exif')) {
+          toggleSelectPhoto(photo.id, e);
+        }
+      });
+      
+      el.querySelector('.btn-open-exif').addEventListener('click', (e) => {
+        e.stopPropagation();
+        openExifModal(photo);
+      });
+
+      return el;
+    }
+
+    function selectAllPhotos() {
+      const visible = getFilteredAndSortedPhotos();
+      visible.forEach(p => AppState.selectedPhotoIds.add(p.id));
+      renderGallery();
+    }
+
+    async function batchDelete() {
+      if (AppState.selectedPhotoIds.size === 0) return;
+      const confirm = await showConfirm(
+        "Treure de la Visualització", 
+        `Estàs segur que vols treure ${AppState.selectedPhotoIds.size} imatge(s) de l'aplicació? No s'eliminaran del teu disc dur.`
       );
-      if (confirmed) {
+      if (confirm) {
         AppState.photos = AppState.photos.filter(p => !AppState.selectedPhotoIds.has(p.id));
         AppState.selectedPhotoIds.clear();
         document.getElementById('stat-total-photos').textContent = AppState.photos.length;
@@ -1201,355 +1292,215 @@
     }
 
     async function batchRename() {
-      const selectedIds = Array.from(AppState.selectedPhotoIds);
-      if (selectedIds.length === 0) return;
-
-      const prefix = await showPrompt("Canviar Noms en Massa", "Introdueix el nou prefix per a les imatges seleccionades:", "Foto");
-      if (!prefix) return;
-
-      let count = 1;
-      AppState.photos.forEach(p => {
-        if (AppState.selectedPhotoIds.has(p.id)) {
-          const ext = p.name.includes('.') ? p.name.split('.').pop() : 'jpg';
-          p.name = `${prefix}_${String(count).padStart(3, '0')}.${ext}`;
-          count++;
-        }
-      });
-      renderGallery();
+      if (AppState.selectedPhotoIds.size === 0) return;
+      const defaultPattern = "{YYYY}-{MM}-{DD}_{camera}_{name}";
+      const pattern = await showPrompt(
+        "Canviar Noms en Massa", 
+        "Fes servir els paràmetres: {YYYY}, {MM}, {DD}, {camera}, {name}", 
+        defaultPattern
+      );
+      
+      if (pattern) {
+        AppState.photos.forEach(p => {
+          if (AppState.selectedPhotoIds.has(p.id)) {
+            const d = p.exif.dateTaken;
+            const yyyy = d ? d.getFullYear() : '0000';
+            const mm = d ? String(d.getMonth() + 1).padStart(2, '0') : '00';
+            const dd = d ? String(d.getDate()).padStart(2, '0') : '00';
+            const cam = (p.exif.model && p.exif.model !== 'Càmera Generica') ? p.exif.model.replace(/[^a-zA-Z0-9]/g, '') : 'IMG';
+            
+            let newName = pattern
+              .replace('{YYYY}', yyyy)
+              .replace('{MM}', mm)
+              .replace('{DD}', dd)
+              .replace('{camera}', cam)
+              .replace('{name}', p.name.split('.')[0]);
+            
+            const ext = p.name.split('.').pop();
+            p.name = `${newName}.${ext}`;
+          }
+        });
+        renderGallery();
+      }
     }
 
-    function openExifModal(photoId) {
-      const photo = AppState.photos.find(p => p.id === photoId);
-      if (!photo) return;
-
-      AppState.currentModalPhoto = photo;
-      const modal = document.getElementById('exif-modal');
-
-      const currentPhotos = getFilteredAndSortedPhotos();
-      const currentIndex = currentPhotos.findIndex(p => p.id === photoId);
-      const counterEl = document.getElementById('modal-photo-counter');
-      if (counterEl && currentIndex !== -1) {
-        counterEl.textContent = `${currentIndex + 1} / ${currentPhotos.length}`;
+    async function exportToZip(photosToExport = null) {
+      let photos = photosToExport && Array.isArray(photosToExport) ? photosToExport : null;
+      if (!photos) {
+        photos = AppState.photos; 
       }
+      
+      if (!photos || photos.length === 0) {
+        await showAlert("Sense Imatges", "No hi ha imatges per exportar.");
+        return;
+      }
+      
+      const zip = new JSZip();
+      photos.forEach(p => {
+        const path = p.folder === '/' ? p.name : `${p.folder.substring(1)}/${p.name}`;
+        zip.file(path, p.file);
+      });
+      
+      try {
+        const blob = await zip.generateAsync({ type: 'blob' });
+        saveAs(blob, 'exportacio_fotos.zip');
+      } catch (err) {
+        console.error("Error generant ZIP", err);
+        await showAlert("Error", "S'ha produït un error al generar el fitxer ZIP.");
+      }
+    }
 
-      document.getElementById('modal-photo-img').src = photo.url;
+    async function exportToPhysicalFolder(photos) {
+      if (!photos || photos.length === 0) return;
+      try {
+        if (!('showDirectoryPicker' in window)) {
+          throw new Error("API No Suportada");
+        }
+        const dirHandle = await window.showDirectoryPicker();
+        let successCount = 0;
+        
+        for (const photo of photos) {
+          const fileHandle = await dirHandle.getFileHandle(photo.name, { create: true });
+          const writable = await fileHandle.createWritable();
+          await writable.write(photo.file);
+          await writable.close();
+          successCount++;
+        }
+        await showAlert("Exportació Completada", `S'han desat correctament ${successCount} imatges al disc dur.`);
+      } catch (err) {
+        if (err.name !== 'AbortError') {
+          const doZip = await showConfirm(
+            "Limitació de Seguretat", 
+            "El teu navegador no permet l'escriptura directa en aquesta finestra o no és compatible. Vols descarregar les imatges com a fitxer ZIP estructurat?", 
+            false
+          );
+          if (doZip) exportToZip(photos);
+        }
+      }
+    }
+
+    function openExifModal(photo) {
+      if (!photo) return;
+      AppState.currentModalPhoto = photo;
+      
       document.getElementById('modal-photo-name').textContent = photo.name;
-      document.getElementById('modal-photo-folder').textContent = photo.folder;
       document.getElementById('modal-photo-size').textContent = formatBytes(photo.size);
-      document.getElementById('modal-photo-dim').textContent = photo.exif.width && photo.exif.height ? `${photo.exif.width} x ${photo.exif.height} (${photo.exif.megapixels} MP)` : 'Sense dades';
+      document.getElementById('modal-photo-dim').textContent = `${photo.exif.width} × ${photo.exif.height} px`;
+      document.getElementById('modal-photo-folder').textContent = photo.folder;
       document.getElementById('modal-photo-date').textContent = formatDate(photo.exif.dateTaken);
-
-      document.getElementById('modal-exif-camera').textContent = `${photo.exif.make} ${photo.exif.model}`;
-      document.getElementById('modal-exif-lens').textContent = photo.exif.lensModel || 'Desconegut';
-      document.getElementById('modal-exif-iso').textContent = photo.exif.iso ? `ISO ${photo.exif.iso}` : '-';
+      
+      const img = document.getElementById('modal-photo-img');
+      img.src = photo.url;
+      
+      document.getElementById('modal-exif-camera').textContent = photo.exif.model || '-';
+      document.getElementById('modal-exif-lens').textContent = photo.exif.lensModel || '-';
+      document.getElementById('modal-exif-iso').textContent = photo.exif.iso || '-';
       document.getElementById('modal-exif-aperture').textContent = photo.exif.fNumber || '-';
       document.getElementById('modal-exif-shutter').textContent = photo.exif.exposureTime || '-';
       document.getElementById('modal-exif-focal').textContent = photo.exif.focalLength || '-';
 
-      const chkSelect = document.getElementById('modal-checkbox-select');
-      if (chkSelect) {
-        chkSelect.checked = AppState.selectedPhotoIds.has(photo.id);
-      }
-
+      const cbSelect = document.getElementById('modal-checkbox-select');
+      cbSelect.checked = AppState.selectedPhotoIds.has(photo.id);
+      
+      const visible = getFilteredAndSortedPhotos();
+      const currentIdx = visible.findIndex(p => p.id === photo.id);
+      document.getElementById('modal-photo-counter').textContent = `${currentIdx + 1} / ${visible.length}`;
+      
+      // GPS Logic
       const mapContainer = document.getElementById('leaflet-map');
-      const noGpsEl = document.getElementById('no-gps-msg');
-
+      const noGpsMsg = document.getElementById('no-gps-msg');
+      
       if (photo.exif.latitude !== null && photo.exif.longitude !== null) {
-        noGpsEl.classList.add('hidden');
         mapContainer.classList.remove('hidden');
-
-        if (!AppState.leafletMap) {
-          AppState.leafletMap = L.map('leaflet-map').setView([photo.exif.latitude, photo.exif.longitude], 13);
-          L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            maxZoom: 19,
-            attribution: '© OpenStreetMap'
-          }).addTo(AppState.leafletMap);
-          AppState.leafletMarker = L.marker([photo.exif.latitude, photo.exif.longitude]).addTo(AppState.leafletMap);
-        } else {
-          AppState.leafletMap.setView([photo.exif.latitude, photo.exif.longitude], 13);
-          AppState.leafletMarker.setLatLng([photo.exif.latitude, photo.exif.longitude]);
-          setTimeout(() => AppState.leafletMap.invalidateSize(), 200);
-        }
+        noGpsMsg.classList.add('hidden');
+        
+        setTimeout(() => {
+          if (!AppState.leafletMap) {
+            AppState.leafletMap = L.map('leaflet-map');
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+              attribution: '© OpenStreetMap'
+            }).addTo(AppState.leafletMap);
+          }
+          
+          const coords = [photo.exif.latitude, photo.exif.longitude];
+          AppState.leafletMap.setView(coords, 14);
+          AppState.leafletMap.invalidateSize();
+          
+          if (AppState.leafletMarker) AppState.leafletMap.removeLayer(AppState.leafletMarker);
+          AppState.leafletMarker = L.marker(coords).addTo(AppState.leafletMap);
+        }, 150);
       } else {
         mapContainer.classList.add('hidden');
-        noGpsEl.classList.remove('hidden');
+        noGpsMsg.classList.remove('hidden');
       }
 
       document.getElementById('input-modal-exif-search').value = '';
       renderFullExifTable('');
+      
+      document.getElementById('exif-modal').classList.remove('hidden');
+    }
 
-      modal.classList.remove('hidden');
-      refreshIcons();
+    function closeExifModal() {
+      document.getElementById('exif-modal').classList.add('hidden');
+      AppState.currentModalPhoto = null;
     }
 
     function navigateModalPhoto(direction) {
       if (!AppState.currentModalPhoto) return;
-      const currentPhotos = getFilteredAndSortedPhotos();
-      if (currentPhotos.length === 0) return;
-
-      const currentIndex = currentPhotos.findIndex(p => p.id === AppState.currentModalPhoto.id);
-      if (currentIndex === -1) return;
-
-      let newIndex = currentIndex + direction;
-      if (newIndex < 0) newIndex = currentPhotos.length - 1;
-      if (newIndex >= currentPhotos.length) newIndex = 0;
-
-      openExifModal(currentPhotos[newIndex].id);
-    }
-
-    function closeExifModal() {
-      const modal = document.getElementById('exif-modal');
-      if (modal) {
-        modal.classList.add('hidden');
-      }
-      AppState.currentModalPhoto = null;
+      const visible = getFilteredAndSortedPhotos();
+      if (visible.length === 0) return;
+      
+      let idx = visible.findIndex(p => p.id === AppState.currentModalPhoto.id);
+      idx += direction;
+      
+      if (idx < 0) idx = visible.length - 1;
+      if (idx >= visible.length) idx = 0;
+      
+      openExifModal(visible[idx]);
     }
 
     function toggleModalPhotoSelection() {
-      if (!AppState.currentModalPhoto) return;
-      const photoId = AppState.currentModalPhoto.id;
-      if (AppState.selectedPhotoIds.has(photoId)) {
-        AppState.selectedPhotoIds.delete(photoId);
-      } else {
-        AppState.selectedPhotoIds.add(photoId);
-      }
-      const chkSelect = document.getElementById('modal-checkbox-select');
-      if (chkSelect) {
-        chkSelect.checked = AppState.selectedPhotoIds.has(photoId);
-      }
-      renderGallery();
-    }
-
-    function selectAllPhotos() {
-      const currentPhotos = getFilteredAndSortedPhotos();
-      currentPhotos.forEach(p => AppState.selectedPhotoIds.add(p.id));
-      renderGallery();
-    }
-
-    function toggleSelectPhoto(photoId, isShiftKey) {
-      const currentPhotos = getFilteredAndSortedPhotos();
-      if (isShiftKey && AppState.lastSelectedId) {
-        const lastIdx = currentPhotos.findIndex(p => p.id === AppState.lastSelectedId);
-        const currIdx = currentPhotos.findIndex(p => p.id === photoId);
-        if (lastIdx !== -1 && currIdx !== -1) {
-          const start = Math.min(lastIdx, currIdx);
-          const end = Math.max(lastIdx, currIdx);
-          for (let i = start; i <= end; i++) {
-            AppState.selectedPhotoIds.add(currentPhotos[i].id);
-          }
-        } else {
-          toggleSingleSelection(photoId);
-        }
-      } else {
-        toggleSingleSelection(photoId);
-      }
-      AppState.lastSelectedId = photoId;
-      renderGallery();
-    }
-
-    function toggleSingleSelection(photoId) {
-      if (AppState.selectedPhotoIds.has(photoId)) {
-        AppState.selectedPhotoIds.delete(photoId);
-      } else {
-        AppState.selectedPhotoIds.add(photoId);
+      if (AppState.currentModalPhoto) {
+        toggleSelectPhoto(AppState.currentModalPhoto.id);
       }
     }
 
-    function getFilteredAndSortedPhotos() {
-      let list = AppState.photos.filter(p => {
-        if (AppState.currentFolder !== "/" && p.folder !== AppState.currentFolder) {
-          return false;
-        }
-        if (AppState.searchQuery.trim() !== "") {
-          const q = AppState.searchQuery.toLowerCase();
-          const matchName = p.name.toLowerCase().includes(q);
-          const matchCam = (`${p.exif.make} ${p.exif.model}`).toLowerCase().includes(q);
-          const matchFolder = p.folder.toLowerCase().includes(q);
-          return matchName || matchCam || matchFolder;
-        }
-        return true;
-      });
-
-      list.sort((a, b) => {
-        switch (AppState.sortBy) {
-          case 'exifDateDesc':
-            return (b.exif.dateTaken || 0) - (a.exif.dateTaken || 0);
-          case 'exifDateAsc':
-            return (a.exif.dateTaken || 0) - (b.exif.dateTaken || 0);
-          case 'nameAsc':
-            return a.name.localeCompare(b.name);
-          case 'nameDesc':
-            return b.name.localeCompare(a.name);
-          case 'sizeDesc':
-            return b.size - a.size;
-          case 'sizeAsc':
-            return a.size - b.size;
-          case 'cameraModel':
-            return (a.exif.model || '').localeCompare(b.exif.model || '');
-          case 'isoValue':
-            return (b.exif.iso || 0) - (a.exif.iso || 0);
-          case 'apertureValue':
-            return (a.exif.fNumberNum || 999) - (b.exif.fNumberNum || 999);
-          case 'focalLengthValue':
-            return (b.exif.focalLengthNum || 0) - (a.exif.focalLengthNum || 0);
-          case 'resolutionValue':
-            return (b.exif.megapixels || 0) - (a.exif.megapixels || 0);
-          default:
-            return 0;
-        }
-      });
-
-      return list;
-    }
-
-    function renderFullExifTable(filterTerm = '') {
+    function renderFullExifTable(filterText) {
       const container = document.getElementById('modal-full-exif');
       if (!container || !AppState.currentModalPhoto) return;
-
       container.innerHTML = '';
-      const tags = AppState.currentModalPhoto.exif.rawTags || {};
-      const entries = Object.entries(tags);
-
-      if (entries.length === 0) {
-        container.innerHTML = '<div class="text-slate-500 italic p-2 text-center">No hi ha etiquetes EXIF addicionals disponibles.</div>';
+      
+      const tags = AppState.currentModalPhoto.exif.rawTags;
+      if (!tags || Object.keys(tags).length === 0) {
+        container.innerHTML = '<div class="p-2 text-slate-500 italic">No hi ha etiquetes EXIF extra disponibles.</div>';
         return;
       }
-
-      const term = filterTerm.toLowerCase().trim();
+      
+      const q = (filterText || '').toLowerCase();
       let count = 0;
-
-      entries.forEach(([key, value]) => {
-        const parsedVal = parseExifValue(value);
-        const valStr = String(parsedVal);
-
-        if (term && !key.toLowerCase().includes(term) && !valStr.toLowerCase().includes(term)) {
-          return;
+      
+      for (const [key, value] of Object.entries(tags)) {
+        if (key === 'thumbnail' || typeof value === 'object' && !Array.isArray(value) && !(value && value.numerator !== undefined)) continue;
+        if (q && !key.toLowerCase().includes(q)) continue;
+        
+        let valStr = String(value);
+        if (typeof value === 'object' && value.numerator !== undefined) {
+           valStr = `${value.numerator} / ${value.denominator}`;
         }
-
-        const row = document.createElement('div');
-        row.className = 'flex items-center justify-between py-1 px-2 hover:bg-slate-900 rounded border-b border-slate-800/40 text-[11px]';
-        row.innerHTML = `
-          <span class="text-slate-400 font-mono truncate mr-2">${key}</span>
-          <span class="text-slate-200 font-medium text-right truncate max-w-[200px]" title="${valStr}">${valStr}</span>
+        if (valStr.length > 50) valStr = valStr.substring(0, 50) + '...';
+        
+        container.innerHTML += `
+          <div class="flex items-center justify-between py-1 border-b border-slate-800/50 hover:bg-slate-900/50 px-1 rounded transition">
+            <span class="text-slate-400 font-mono">${key}</span>
+            <span class="text-slate-200 text-right truncate pl-2 max-w-[60%]">${valStr}</span>
+          </div>
         `;
-        container.appendChild(row);
         count++;
-      });
-
+      }
+      
       if (count === 0) {
-        container.innerHTML = '<div class="text-slate-500 italic p-2 text-center">Cap etiqueta coincideix amb la cerca.</div>';
+         container.innerHTML = '<div class="p-2 text-slate-500 italic">Cap etiqueta coincideix amb la cerca.</div>';
       }
-    }
-
-    function renderGallery() {
-      const galleryGrid = document.getElementById('gallery-grid');
-      const emptyState = document.getElementById('empty-state');
-      const batchToolbar = document.getElementById('batch-toolbar');
-      const batchCount = document.getElementById('batch-count');
-
-      const photos = getFilteredAndSortedPhotos();
-
-      if (AppState.selectedPhotoIds.size > 0) {
-        batchToolbar.classList.remove('hidden');
-        batchCount.textContent = `${AppState.selectedPhotoIds.size} seleccionats`;
-      } else {
-        batchToolbar.classList.add('hidden');
-      }
-
-      if (photos.length === 0) {
-        emptyState.classList.remove('hidden');
-        galleryGrid.classList.add('hidden');
-        return;
-      }
-
-      emptyState.classList.add('hidden');
-      galleryGrid.classList.remove('hidden');
-
-      if (AppState.viewMode === 'list') {
-        galleryGrid.className = 'flex flex-col gap-2';
-      } else {
-        galleryGrid.className = 'grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-4';
-      }
-
-      galleryGrid.innerHTML = '';
-
-      photos.forEach(photo => {
-        const isSelected = AppState.selectedPhotoIds.has(photo.id);
-
-        const card = document.createElement('div');
-        card.draggable = true;
-
-        if (AppState.viewMode === 'list') {
-          card.className = `group flex items-center justify-between p-2.5 rounded-xl border bg-slate-900/60 transition cursor-pointer ${
-            isSelected ? 'border-blue-500 bg-blue-950/30 ring-1 ring-blue-500' : 'border-slate-800 hover:border-slate-700'
-          }`;
-          card.innerHTML = `
-            <div class="flex items-center gap-3 overflow-hidden">
-              <input type="checkbox" ${isSelected ? 'checked' : ''} class="chk-photo rounded text-blue-600 bg-slate-950 border-slate-700 cursor-pointer" />
-              <img src="${photo.url}" alt="${photo.name}" class="w-10 h-10 object-cover rounded-lg bg-slate-950 shrink-0" />
-              <div class="truncate">
-                <h4 class="text-xs font-semibold text-slate-200 truncate">${photo.name}</h4>
-                <p class="text-[10px] text-slate-400">${photo.exif.make} ${photo.exif.model} • ${photo.exif.iso ? 'ISO ' + photo.exif.iso : ''} • ${photo.exif.fNumber || ''}</p>
-              </div>
-            </div>
-            <div class="flex items-center gap-3 shrink-0 text-xs text-slate-400">
-              <span class="font-mono text-[11px] hidden md:inline">${formatDate(photo.exif.dateTaken)}</span>
-              <span class="text-[11px] hidden sm:inline">${formatBytes(photo.size)}</span>
-              <button class="btn-inspect p-1 hover:text-blue-400 rounded-md transition" title="Inspeccionar EXIF">
-                <i data-lucide="info" class="w-4 h-4"></i>
-              </button>
-              <button class="btn-delete p-1 hover:text-rose-400 rounded-md transition" title="Eliminar de la galeria">
-                <i data-lucide="trash-2" class="w-4 h-4"></i>
-              </button>
-            </div>
-          `;
-        } else {
-          card.className = `group relative rounded-xl border overflow-hidden bg-slate-900/60 transition cursor-pointer ${
-            isSelected ? 'border-blue-500 ring-2 ring-blue-500/80 bg-blue-950/20' : 'border-slate-800/80 hover:border-slate-700'
-          }`;
-          card.innerHTML = `
-            <div class="aspect-square bg-slate-950 relative overflow-hidden flex items-center justify-center">
-              <img src="${photo.url}" alt="${photo.name}" class="w-full h-full object-cover group-hover:scale-105 transition duration-300" />
-              <div class="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition flex items-end justify-between p-2">
-                <button class="btn-inspect p-1.5 bg-slate-900/80 hover:bg-blue-600 text-white rounded-lg backdrop-blur-sm transition shadow" title="Inspeccionar EXIF">
-                  <i data-lucide="info" class="w-3.5 h-3.5"></i>
-                </button>
-                <button class="btn-delete p-1.5 bg-slate-900/80 hover:bg-rose-600 text-white rounded-lg backdrop-blur-sm transition shadow" title="Eliminar de la galeria">
-                  <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
-                </button>
-              </div>
-              <div class="absolute top-2 left-2">
-                <input type="checkbox" ${isSelected ? 'checked' : ''} class="chk-photo rounded text-blue-600 bg-slate-950/80 border-slate-700 cursor-pointer w-4 h-4" />
-              </div>
-            </div>
-            <div class="p-2.5">
-              <h4 class="text-xs font-semibold text-slate-200 truncate" title="${photo.name}">${photo.name}</h4>
-              <div class="flex items-center justify-between text-[10px] text-slate-400 mt-1">
-                <span class="truncate">${photo.exif.model || 'Sense càmera'}</span>
-                <span class="font-mono text-slate-500 shrink-0 ml-1">${photo.exif.iso ? 'ISO ' + photo.exif.iso : ''}</span>
-              </div>
-            </div>
-          `;
-        }
-
-        card.addEventListener('dragstart', (e) => {
-          e.dataTransfer.setData('text/plain', photo.id);
-        });
-
-        card.addEventListener('click', (e) => {
-          if (e.target.closest('.btn-inspect')) {
-            openExifModal(photo.id);
-          } else if (e.target.closest('.btn-delete')) {
-            deleteSinglePhoto(photo.id);
-          } else {
-            toggleSelectPhoto(photo.id, e.shiftKey);
-          }
-        });
-
-        galleryGrid.appendChild(card);
-      });
-
-      refreshIcons();
     }
 
     document.addEventListener('DOMContentLoaded', () => {
