@@ -780,9 +780,17 @@
 
       if (needDirPickerPhotos.length > 0) {
         if ('showDirectoryPicker' in window) {
+          // Creem una llista amb els noms i rutes (si estan disponibles) de les fotos per ajudar l'usuari
+          const filesList = needDirPickerPhotos.slice(0, 5).map(p => {
+            // Si es va pujar amb "Carregar Carpeta", tindrà una ruta relativa. Si no, només el nom.
+            return p.file.webkitRelativePath ? p.file.webkitRelativePath : p.name;
+          }).join('\n- ');
+          
+          const moreCount = needDirPickerPhotos.length > 5 ? `\n... i ${needDirPickerPhotos.length - 5} més.` : '';
+
           const askPicker = await showConfirm(
             "Permís d'Accés al Disc Dur",
-            `Per eliminar ${needDirPickerPhotos.length} fitxer(s) carregat(s) des del navegador, cal seleccionar la carpeta física on es troben al teu disc dur.\n\nVols escollir la carpeta ara?`,
+            `Per seguretat, el navegador web no pot esborrar fitxers directament. Cal que seleccionis manualment la carpeta original on es troben per donar permís.\n\n(El navegador oculta la ruta completa del teu disc dur per privacitat)\n\nFitxers que has de buscar per esborrar:\n- ${filesList}${moreCount}\n\nVols seleccionar la carpeta ara?`,
             false
           );
 
