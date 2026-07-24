@@ -77,11 +77,6 @@
     </div>
 
     <div class="flex items-center gap-2 sm:gap-3">
-      <button id="btn-load-demo" class="hidden sm:flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs px-3 py-2 rounded-lg border border-slate-700 transition">
-        <i data-lucide="sparkles" class="w-4 h-4 text-amber-400"></i>
-        <span>Fotos Demo</span>
-      </button>
-
       <label class="cursor-pointer flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white text-xs sm:text-sm font-medium px-3 sm:px-4 py-2 rounded-lg shadow-lg shadow-blue-600/20 transition">
         <i data-lucide="upload" class="w-4 h-4"></i>
         <span>Afegir Imatges</span>
@@ -102,6 +97,7 @@
   </header>
 
   <div class="flex-1 flex overflow-hidden">
+    <!-- Sidebar -->
     <aside class="w-64 sm:w-72 bg-slate-900/80 border-r border-slate-800 flex flex-col shrink-0">
       <div class="p-3 border-b border-slate-800 flex items-center justify-between">
         <span class="text-xs font-semibold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
@@ -136,6 +132,7 @@
       </div>
     </aside>
 
+    <!-- Main Workspace -->
     <main class="flex-1 flex flex-col bg-slate-950 overflow-hidden relative" id="drop-target">
       <div class="h-14 bg-slate-900/50 border-b border-slate-800/80 flex items-center justify-between px-4 shrink-0 flex-wrap gap-2">
         <div class="flex items-center gap-2 flex-1 max-w-xs">
@@ -146,6 +143,11 @@
         </div>
 
         <div class="flex items-center gap-2">
+          <button id="btn-select-all" class="flex items-center gap-1.5 bg-slate-800/80 hover:bg-slate-700 border border-slate-700/60 text-xs text-slate-200 px-2.5 py-1.5 rounded-lg transition" title="Seleccionar totes les imatges d'aquesta vista">
+            <i data-lucide="check-square" class="w-3.5 h-3.5 text-blue-400"></i>
+            <span class="hidden sm:inline">Seleccionar tot</span>
+          </button>
+
           <span class="text-xs text-slate-400 hidden sm:inline">Ordenar per EXIF:</span>
           <select id="select-sort-by" class="bg-slate-800/80 border border-slate-700/60 text-xs text-slate-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-blue-500 transition">
             <option value="exifDateDesc">Data EXIF (Més recents)</option>
@@ -172,20 +174,25 @@
       <div id="batch-toolbar" class="hidden bg-blue-900/30 border-b border-blue-500/30 px-4 py-2 flex items-center justify-between text-xs text-blue-200">
         <div class="flex items-center gap-2">
           <span class="font-semibold" id="batch-count">0 seleccionats</span>
-          <button id="btn-deselect-all" class="text-slate-400 hover:text-white underline text-[11px] ml-2">Desseleccionar tot</button>
+          <button id="btn-select-all-batch" class="text-blue-400 hover:text-blue-300 underline text-[11px] ml-2">Seleccionar tot</button>
+          <span class="text-slate-600">|</span>
+          <button id="btn-deselect-all" class="text-slate-400 hover:text-white underline text-[11px]">Desseleccionar tot</button>
         </div>
-        <div class="flex items-center gap-2">
+        <div class="flex items-center gap-2 flex-wrap">
           <select id="select-move-folder" class="bg-slate-800 border border-slate-700 text-xs text-slate-200 rounded px-2 py-1">
             <option value="">-- Moure a la carpeta... --</option>
           </select>
           <button id="btn-batch-export-disk" class="bg-emerald-700 hover:bg-emerald-600 text-white border border-emerald-600 px-2.5 py-1 rounded flex items-center gap-1 transition" title="Moure/Desar les seleccionades a una carpeta física del disc dur">
             <i data-lucide="hard-drive-upload" class="w-3.5 h-3.5"></i> Desar a Disc Dur
           </button>
+          <button id="btn-batch-delete-disk" class="bg-rose-700 hover:bg-rose-600 text-white border border-rose-600 px-2.5 py-1 rounded flex items-center gap-1 transition" title="Eliminar definitivament les imatges seleccionades del disc dur">
+            <i data-lucide="trash-2" class="w-3.5 h-3.5"></i> Eliminar del Disc Dur
+          </button>
           <button id="btn-batch-rename" class="bg-slate-800 hover:bg-slate-700 border border-slate-600 px-2.5 py-1 rounded flex items-center gap-1 transition">
             <i data-lucide="file-signature" class="w-3.5 h-3.5"></i> Canviar noms
           </button>
-          <button id="btn-batch-delete" class="bg-rose-600/80 hover:bg-rose-600 text-white px-2.5 py-1 rounded flex items-center gap-1 transition">
-            <i data-lucide="trash-2" class="w-3.5 h-3.5"></i> Eliminar
+          <button id="btn-batch-delete" class="bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-600 px-2.5 py-1 rounded flex items-center gap-1 transition" title="Treure de la galeria sense esborrar del disc dur">
+            <i data-lucide="x-circle" class="w-3.5 h-3.5"></i> Treure de Vista
           </button>
         </div>
       </div>
@@ -205,9 +212,6 @@
               <i data-lucide="upload" class="w-4 h-4"></i> Seleccionar Fitxers
               <input type="file" id="empty-input-files" multiple accept="image/*" class="hidden" />
             </label>
-            <button id="empty-btn-demo" class="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-xs px-4 py-2.5 rounded-lg font-medium transition flex items-center gap-2">
-              <i data-lucide="sparkles" class="w-4 h-4 text-amber-400"></i> Carregar Fotos de Mostra
-            </button>
           </div>
         </div>
 
@@ -222,6 +226,7 @@
     </main>
   </div>
 
+  <!-- EXIF Modal -->
   <div id="exif-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-6 z-50 hidden">
     <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-4xl w-full max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
       <div class="p-4 border-b border-slate-800 flex items-center justify-between bg-slate-900 shrink-0">
@@ -229,15 +234,36 @@
           <i data-lucide="file-text" class="w-5 h-5 text-blue-400 shrink-0"></i>
           <h2 id="modal-photo-name" class="font-bold text-sm text-slate-100 truncate">Fitxer</h2>
         </div>
-        <button id="btn-close-exif-modal" class="p-1 hover:bg-slate-800 text-slate-400 hover:text-white rounded-lg transition">
-          <i data-lucide="x" class="w-5 h-5"></i>
-        </button>
+        <div class="flex items-center gap-1 sm:gap-2 shrink-0">
+          <label class="flex items-center gap-2 cursor-pointer bg-slate-800/80 hover:bg-slate-700 px-2.5 py-1 rounded-lg border border-slate-700/80 transition mr-2" title="Seleccionar / Desseleccionar foto (o Espai)">
+            <input type="checkbox" id="modal-checkbox-select" class="w-4 h-4 rounded text-blue-600 bg-slate-900 border-slate-700 focus:ring-0 cursor-pointer" />
+            <span class="text-xs text-slate-200 font-medium">Seleccionada</span>
+          </label>
+          <button id="btn-prev-photo" class="p-1 hover:bg-slate-800 text-slate-300 hover:text-white rounded-lg transition" title="Foto Anterior (Fletxa Esquerra)">
+            <i data-lucide="chevron-left" class="w-5 h-5"></i>
+          </button>
+          <span id="modal-photo-counter" class="text-xs text-slate-400 font-mono px-1">0 / 0</span>
+          <button id="btn-next-photo" class="p-1 hover:bg-slate-800 text-slate-300 hover:text-white rounded-lg transition" title="Foto Següent (Fletxa Dreta)">
+            <i data-lucide="chevron-right" class="w-5 h-5"></i>
+          </button>
+          <div class="h-4 w-px bg-slate-800 mx-1"></div>
+          <button id="btn-close-exif-modal" class="p-1 hover:bg-slate-800 text-slate-400 hover:text-white rounded-lg transition">
+            <i data-lucide="x" class="w-5 h-5"></i>
+          </button>
+        </div>
       </div>
 
       <div class="flex-1 overflow-y-auto p-4 sm:p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
         <div class="flex flex-col gap-4">
-          <div class="aspect-video bg-slate-950 rounded-xl overflow-hidden border border-slate-800 flex items-center justify-center">
+          <div class="aspect-video bg-slate-950 rounded-xl overflow-hidden border border-slate-800 flex items-center justify-center relative group">
             <img id="modal-photo-img" src="" alt="Preview" class="max-h-full max-w-full object-contain" />
+            
+            <button id="btn-prev-photo-overlay" class="absolute left-2 top-1/2 -translate-y-1/2 p-2 bg-slate-900/70 hover:bg-slate-900 text-slate-200 rounded-full border border-slate-700/80 backdrop-blur-sm opacity-80 hover:opacity-100 transition shadow-lg" title="Foto Anterior (Fletxa Esquerra)">
+              <i data-lucide="chevron-left" class="w-5 h-5"></i>
+            </button>
+            <button id="btn-next-photo-overlay" class="absolute right-2 top-1/2 -translate-y-1/2 p-2 bg-slate-900/70 hover:bg-slate-900 text-slate-200 rounded-full border border-slate-700/80 backdrop-blur-sm opacity-80 hover:opacity-100 transition shadow-lg" title="Foto Següent (Fletxa Dreta)">
+              <i data-lucide="chevron-right" class="w-5 h-5"></i>
+            </button>
           </div>
 
           <div class="bg-slate-950/60 p-3 rounded-xl border border-slate-800/80 space-y-2 text-xs">
@@ -305,6 +331,7 @@
     </div>
   </div>
 
+  <!-- Criteria Config Modal -->
   <div id="criteria-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 z-50 hidden">
     <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 max-w-md w-full shadow-2xl space-y-4">
       <div class="flex items-center justify-between border-b border-slate-800 pb-3">
@@ -331,6 +358,7 @@
     </div>
   </div>
 
+  <!-- Confirm Modal -->
   <div id="confirm-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 z-50 hidden">
     <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 max-w-sm w-full shadow-2xl space-y-4">
       <div class="flex items-center gap-3">
@@ -347,6 +375,7 @@
     </div>
   </div>
 
+  <!-- Prompt Dialog -->
   <dialog id="prompt-dialog" class="bg-slate-900 text-slate-100 border border-slate-800 rounded-xl p-5 shadow-2xl backdrop:bg-slate-950/80 max-w-sm w-full">
     <form method="dialog" id="prompt-form">
       <h3 id="dialog-title" class="font-bold text-sm text-slate-200 mb-2">Títol</h3>
@@ -558,7 +587,7 @@
       return dd;
     }
 
-    async function processImageFile(file, folderPath = "/") {
+    async function processImageFile(file, folderPath = "/", handle = null, dirHandle = null) {
       return new Promise((resolve) => {
         const photoId = generateId();
         const blobUrl = URL.createObjectURL(file);
@@ -568,6 +597,8 @@
           id: photoId,
           fingerprint: fingerprint,
           file: file,
+          handle: handle,
+          dirHandle: dirHandle,
           name: file.name,
           size: file.size,
           type: file.type,
@@ -701,34 +732,95 @@
       });
     }
 
-    async function importFiles(files) {
-      if (!files || files.length === 0) return;
-
-      let addedCount = 0;
-      let skippedDuplicates = 0;
-
-      for (let i = 0; i < files.length; i++) {
-        const file = files[i];
-        const fp = `${file.name}_${file.size}_${file.lastModified}`;
-
-        const isDuplicate = AppState.photos.some(p => p.fingerprint === fp || (p.name === file.name && p.size === file.size && p.lastModified === file.lastModified));
-
-        if (isDuplicate) {
-          skippedDuplicates++;
-          continue;
-        }
-
-        const photoData = await processImageFile(file, AppState.currentFolder);
-        AppState.photos.push(photoData);
-        addedCount++;
+    async function deleteFromHardDrive(photosToDelete) {
+      if (!photosToDelete || photosToDelete.length === 0) {
+        await showAlert("Sense Selecció", "Selecciona almenys una imatge per eliminar del disc dur.");
+        return;
       }
 
-      document.getElementById('stat-total-photos').textContent = AppState.photos.length;
-      renderFolderTree();
-      renderGallery();
+      const count = photosToDelete.length;
+      const confirmed = await showConfirm(
+        "⚠️ Confirmar Eliminació del Disc Dur",
+        `ATENCIÓ: Estàs a punt d'eliminar definitivament ${count} fitxer(s) del teu disc dur (o enviar-los a la paperera del sistema).\n\nAquesta acció esborrarà els fitxers reals del teu equip. Vols continuar?`,
+        true
+      );
 
-      if (skippedDuplicates > 0) {
-        await showAlert("Importació Finalitzada", `S'han afegit ${addedCount} imatges noves.\nS'han omès ${skippedDuplicates} imatges que ja s'estaven visualitzant (duplicades).`);
+      if (!confirmed) return;
+
+      let deletedCount = 0;
+      let failedCount = 0;
+      let needDirPickerPhotos = [];
+
+      for (const photo of photosToDelete) {
+        try {
+          if (photo.handle && typeof photo.handle.remove === 'function') {
+            await photo.handle.remove();
+            deletedCount++;
+          } else if (photo.dirHandle && typeof photo.dirHandle.removeEntry === 'function') {
+            await photo.dirHandle.removeEntry(photo.name);
+            deletedCount++;
+          } else {
+            needDirPickerPhotos.push(photo);
+          }
+        } catch (err) {
+          console.error("Error direct removal:", err);
+          needDirPickerPhotos.push(photo);
+        }
+      }
+
+      if (needDirPickerPhotos.length > 0) {
+        if ('showDirectoryPicker' in window) {
+          const askPicker = await showConfirm(
+            "Permís d'Accés al Disc Dur",
+            `Per eliminar ${needDirPickerPhotos.length} fitxer(s) carregat(s) des del navegador, cal seleccionar la carpeta física on es troben al teu disc dur.\n\nVols escollir la carpeta ara?`,
+            false
+          );
+
+          if (askPicker) {
+            try {
+              const dirHandle = await window.showDirectoryPicker({ mode: 'readwrite' });
+              for (const photo of needDirPickerPhotos) {
+                try {
+                  await dirHandle.removeEntry(photo.name);
+                  deletedCount++;
+                } catch (e) {
+                  console.error("No s'ha pogut eliminar el fitxer de la carpeta seleccionada:", e);
+                  failedCount++;
+                }
+              }
+            } catch (err) {
+              if (err.name !== 'AbortError') {
+                failedCount += needDirPickerPhotos.length;
+              }
+            }
+          } else {
+            failedCount += needDirPickerPhotos.length;
+          }
+        } else {
+          failedCount += needDirPickerPhotos.length;
+        }
+      }
+
+      if (deletedCount > 0) {
+        const deletedIds = new Set(photosToDelete.slice(0, deletedCount).map(p => p.id));
+        AppState.photos = AppState.photos.filter(p => !deletedIds.has(p.id));
+        photosToDelete.forEach(p => {
+          if (deletedIds.has(p.id)) {
+            AppState.selectedPhotoIds.delete(p.id);
+          }
+        });
+
+        document.getElementById('stat-total-photos').textContent = AppState.photos.length;
+        renderFolderTree();
+        renderGallery();
+      }
+
+      if (deletedCount > 0 && failedCount === 0) {
+        await showAlert("Eliminació Completada", `S'han eliminat correctament ${deletedCount} imatge(s) del teu disc dur / paperera.`);
+      } else if (deletedCount > 0 && failedCount > 0) {
+        await showAlert("Eliminació Parcial", `S'han eliminat ${deletedCount} imatge(s) del disc dur.\nNo s'han pogut esborrar ${failedCount} imatge(s) (manca de permisos o fitxers no trobats).`);
+      } else if (failedCount > 0) {
+        await showAlert("No s'ha pogut eliminar", "El navegador o les restriccions del sistema no han permès eliminar els fitxers directament del disc dur.");
       }
     }
 
@@ -748,6 +840,7 @@
 
     function renderFolderTree() {
       const folderListEl = document.getElementById('folder-list');
+      if (!folderListEl) return;
       folderListEl.innerHTML = '';
 
       const sortedFolders = [...AppState.folders].sort();
@@ -888,8 +981,6 @@
     async function executeAutoOrganize(criteriaId) {
       if (AppState.photos.length === 0) return showAlert("Sense fotos", "Carrega primer algunes imatges!");
 
-      let count = 0;
-
       AppState.photos.forEach(photo => {
         let folderName = "/Altres";
 
@@ -961,12 +1052,10 @@
         });
 
         photo.folder = folderName;
-        count++;
       });
 
       renderFolderTree();
       renderGallery();
-      await showAlert("Organització completada", `S'han agrupat ${count} imatges segons el criteri triat.`);
     }
 
     async function exportPhotosToZip(photosToExport, zipFilename = "Fotos_Organitzades_EXIF.zip") {
@@ -1043,8 +1132,6 @@
       } catch (err) {
         if (err.name === 'AbortError') return;
 
-        console.warn("Error al desar carpeta física:", err);
-
         if (err.name === 'SecurityError' || (err.message && err.message.includes('sub frames'))) {
           const fallback = await showConfirm(
             "Restricció de Seguretat (iFrame)",
@@ -1063,6 +1150,7 @@
     function openCriteriaModal() {
       const modal = document.getElementById('criteria-modal');
       const listEl = document.getElementById('criteria-checkbox-list');
+      if (!modal || !listEl) return;
 
       listEl.innerHTML = '';
       AppState.availableCriteria.forEach(crit => {
@@ -1082,12 +1170,67 @@
       refreshIcons();
     }
 
+    async function deleteSinglePhoto(photoId) {
+      const photo = AppState.photos.find(p => p.id === photoId);
+      if (!photo) return;
+      const confirmed = await showConfirm("Eliminar Imatge", `Estàs segur de voler eliminar "${photo.name}" de la visualització?`);
+      if (confirmed) {
+        AppState.photos = AppState.photos.filter(p => p.id !== photoId);
+        AppState.selectedPhotoIds.delete(photoId);
+        document.getElementById('stat-total-photos').textContent = AppState.photos.length;
+        renderFolderTree();
+        renderGallery();
+      }
+    }
+
+    async function batchDelete() {
+      const selectedIds = Array.from(AppState.selectedPhotoIds);
+      if (selectedIds.length === 0) return;
+
+      const confirmed = await showConfirm(
+        "Eliminar Imatges Seleccionades de la Visualització", 
+        `Estàs segur de voler eliminar les ${selectedIds.length} imatges seleccionades de la visualització?`
+      );
+      if (confirmed) {
+        AppState.photos = AppState.photos.filter(p => !AppState.selectedPhotoIds.has(p.id));
+        AppState.selectedPhotoIds.clear();
+        document.getElementById('stat-total-photos').textContent = AppState.photos.length;
+        renderFolderTree();
+        renderGallery();
+      }
+    }
+
+    async function batchRename() {
+      const selectedIds = Array.from(AppState.selectedPhotoIds);
+      if (selectedIds.length === 0) return;
+
+      const prefix = await showPrompt("Canviar Noms en Massa", "Introdueix el nou prefix per a les imatges seleccionades:", "Foto");
+      if (!prefix) return;
+
+      let count = 1;
+      AppState.photos.forEach(p => {
+        if (AppState.selectedPhotoIds.has(p.id)) {
+          const ext = p.name.includes('.') ? p.name.split('.').pop() : 'jpg';
+          p.name = `${prefix}_${String(count).padStart(3, '0')}.${ext}`;
+          count++;
+        }
+      });
+      renderGallery();
+    }
+
     function openExifModal(photoId) {
       const photo = AppState.photos.find(p => p.id === photoId);
       if (!photo) return;
 
       AppState.currentModalPhoto = photo;
       const modal = document.getElementById('exif-modal');
+
+      const currentPhotos = getFilteredAndSortedPhotos();
+      const currentIndex = currentPhotos.findIndex(p => p.id === photoId);
+      const counterEl = document.getElementById('modal-photo-counter');
+      if (counterEl && currentIndex !== -1) {
+        counterEl.textContent = `${currentIndex + 1} / ${currentPhotos.length}`;
+      }
 
       document.getElementById('modal-photo-img').src = photo.url;
       document.getElementById('modal-photo-name').textContent = photo.name;
@@ -1102,6 +1245,11 @@
       document.getElementById('modal-exif-aperture').textContent = photo.exif.fNumber || '-';
       document.getElementById('modal-exif-shutter').textContent = photo.exif.exposureTime || '-';
       document.getElementById('modal-exif-focal').textContent = photo.exif.focalLength || '-';
+
+      const chkSelect = document.getElementById('modal-checkbox-select');
+      if (chkSelect) {
+        chkSelect.checked = AppState.selectedPhotoIds.has(photo.id);
+      }
 
       const mapContainer = document.getElementById('leaflet-map');
       const noGpsEl = document.getElementById('no-gps-msg');
@@ -1134,402 +1282,374 @@
       refreshIcons();
     }
 
+    function navigateModalPhoto(direction) {
+      if (!AppState.currentModalPhoto) return;
+      const currentPhotos = getFilteredAndSortedPhotos();
+      if (currentPhotos.length === 0) return;
+
+      const currentIndex = currentPhotos.findIndex(p => p.id === AppState.currentModalPhoto.id);
+      if (currentIndex === -1) return;
+
+      let newIndex = currentIndex + direction;
+      if (newIndex < 0) newIndex = currentPhotos.length - 1;
+      if (newIndex >= currentPhotos.length) newIndex = 0;
+
+      openExifModal(currentPhotos[newIndex].id);
+    }
+
     function closeExifModal() {
-      document.getElementById('exif-modal').classList.add('hidden');
+      const modal = document.getElementById('exif-modal');
+      if (modal) {
+        modal.classList.add('hidden');
+      }
       AppState.currentModalPhoto = null;
     }
 
-    function renderFullExifTable(filterText = '') {
-      const photo = AppState.currentModalPhoto;
-      if (!photo) return;
-
-      const fullExifEl = document.getElementById('modal-full-exif');
-      fullExifEl.innerHTML = '';
-
-      const tags = photo.exif.rawTags || {};
-      const entries = Object.entries(tags);
-
-      let matches = 0;
-      if (entries.length > 0) {
-        entries.forEach(([key, val]) => {
-          if (typeof val === 'function') return;
-
-          const displayVal = parseExifValue(val);
-          if (displayVal === null || displayVal === undefined) return;
-
-          const searchStr = filterText.toLowerCase();
-          if (searchStr && !key.toLowerCase().includes(searchStr) && !String(displayVal).toLowerCase().includes(searchStr)) {
-            return;
-          }
-
-          matches++;
-          const row = document.createElement('div');
-          row.className = "flex justify-between border-b border-slate-800/60 py-1 px-1 hover:bg-slate-800/40 rounded transition";
-          row.innerHTML = `<span class="text-slate-400 font-semibold select-all">${key}:</span><span class="text-blue-300 font-mono truncate max-w-[240px] select-all" title="${String(displayVal)}">${String(displayVal)}</span>`;
-          fullExifEl.appendChild(row);
-        });
-      }
-
-      if (matches === 0) {
-        fullExifEl.innerHTML = `<div class="p-3 text-center text-slate-500 italic">No s'han trobat etiquetes EXIF que coincideixin amb la cerca.</div>`;
-      }
-    }
-
-    function getFilteredAndSortedPhotos() {
-      let photos = AppState.photos.filter(p => p.folder === AppState.currentFolder);
-
-      if (AppState.searchQuery.trim()) {
-        const q = AppState.searchQuery.toLowerCase().trim();
-        photos = photos.filter(p => 
-          p.name.toLowerCase().includes(q) ||
-          p.exif.make.toLowerCase().includes(q) ||
-          p.exif.model.toLowerCase().includes(q) ||
-          p.exif.lensModel.toLowerCase().includes(q) ||
-          (p.exif.iso && String(p.exif.iso).includes(q))
-        );
-      }
-
-      photos.sort((a, b) => {
-        switch (AppState.sortBy) {
-          case 'exifDateDesc': return (b.exif.dateTaken || 0) - (a.exif.dateTaken || 0);
-          case 'exifDateAsc': return (a.exif.dateTaken || 0) - (b.exif.dateTaken || 0);
-          case 'nameAsc': return a.name.localeCompare(b.name);
-          case 'nameDesc': return b.name.localeCompare(a.name);
-          case 'sizeDesc': return b.size - a.size;
-          case 'sizeAsc': return a.size - b.size;
-          case 'cameraModel': return `${a.exif.make} ${a.exif.model}`.localeCompare(`${b.exif.make} ${b.exif.model}`);
-          case 'isoValue': return (b.exif.iso || 0) - (a.exif.iso || 0);
-          case 'apertureValue': return (a.exif.fNumberNum || 999) - (b.exif.fNumberNum || 999);
-          case 'focalLengthValue': return (b.exif.focalLengthNum || 0) - (a.exif.focalLengthNum || 0);
-          case 'resolutionValue': return (b.exif.megapixels || 0) - (a.exif.megapixels || 0);
-          default: return 0;
-        }
-      });
-
-      return photos;
-    }
-
-    function toggleSelectPhoto(photoId, event, displayedPhotos) {
-      if (event && event.shiftKey && AppState.lastSelectedId) {
-        const currentIndex = displayedPhotos.findIndex(p => p.id === photoId);
-        const lastIndex = displayedPhotos.findIndex(p => p.id === AppState.lastSelectedId);
-        if (currentIndex !== -1 && lastIndex !== -1) {
-          const start = Math.min(currentIndex, lastIndex);
-          const end = Math.max(currentIndex, lastIndex);
-          for (let i = start; i <= end; i++) {
-            AppState.selectedPhotoIds.add(displayedPhotos[i].id);
-          }
-        } else {
-          if (AppState.selectedPhotoIds.has(photoId)) AppState.selectedPhotoIds.delete(photoId);
-          else AppState.selectedPhotoIds.add(photoId);
-          AppState.lastSelectedId = photoId;
-        }
+    function toggleModalPhotoSelection() {
+      if (!AppState.currentModalPhoto) return;
+      const photoId = AppState.currentModalPhoto.id;
+      if (AppState.selectedPhotoIds.has(photoId)) {
+        AppState.selectedPhotoIds.delete(photoId);
       } else {
-        if (AppState.selectedPhotoIds.has(photoId)) AppState.selectedPhotoIds.delete(photoId);
-        else AppState.selectedPhotoIds.add(photoId);
-        AppState.lastSelectedId = photoId;
+        AppState.selectedPhotoIds.add(photoId);
+      }
+      const chkSelect = document.getElementById('modal-checkbox-select');
+      if (chkSelect) {
+        chkSelect.checked = AppState.selectedPhotoIds.has(photoId);
       }
       renderGallery();
     }
 
-    async function deleteSinglePhoto(photoId) {
-      const photo = AppState.photos.find(p => p.id === photoId);
-      if (!photo) return;
-      const confirmed = await showConfirm("Eliminar Imatge", `Estàs segur de voler eliminar "${photo.name}"?`);
-      if (confirmed) {
-        AppState.photos = AppState.photos.filter(p => p.id !== photoId);
-        AppState.selectedPhotoIds.delete(photoId);
-        document.getElementById('stat-total-photos').textContent = AppState.photos.length;
-        renderFolderTree();
-        renderGallery();
-      }
+    function selectAllPhotos() {
+      const currentPhotos = getFilteredAndSortedPhotos();
+      currentPhotos.forEach(p => AppState.selectedPhotoIds.add(p.id));
+      renderGallery();
     }
 
-    async function batchDelete() {
-      const selectedIds = Array.from(AppState.selectedPhotoIds);
-      if (selectedIds.length === 0) return;
-
-      const confirmed = await showConfirm("Eliminar Imatges Seleccionades", `Estàs segur de voler eliminar les ${selectedIds.length} imatges seleccionades?`);
-      if (confirmed) {
-        AppState.photos = AppState.photos.filter(p => !AppState.selectedPhotoIds.has(p.id));
-        AppState.selectedPhotoIds.clear();
-        document.getElementById('stat-total-photos').textContent = AppState.photos.length;
-        renderFolderTree();
-        renderGallery();
-      }
-    }
-
-    async function batchRename() {
-      const selectedIds = Array.from(AppState.selectedPhotoIds);
-      if (selectedIds.length === 0) return;
-
-      const prefix = await showPrompt(
-        "Canviar Noms en Massa",
-        "Introdueix un prefix o nom base per a les imatges seleccionades (ex: 'Viatge_2024'):",
-        "Foto"
-      );
-
-      if (prefix !== null && prefix.trim() !== "") {
-        let index = 1;
-        AppState.photos.forEach(p => {
-          if (AppState.selectedPhotoIds.has(p.id)) {
-            const ext = p.name.includes('.') ? p.name.substring(p.name.lastIndexOf('.')) : '.jpg';
-            p.name = `${prefix.trim()}_${String(index).padStart(3, '0')}${ext}`;
-            index++;
+    function toggleSelectPhoto(photoId, isShiftKey) {
+      const currentPhotos = getFilteredAndSortedPhotos();
+      if (isShiftKey && AppState.lastSelectedId) {
+        const lastIdx = currentPhotos.findIndex(p => p.id === AppState.lastSelectedId);
+        const currIdx = currentPhotos.findIndex(p => p.id === photoId);
+        if (lastIdx !== -1 && currIdx !== -1) {
+          const start = Math.min(lastIdx, currIdx);
+          const end = Math.max(lastIdx, currIdx);
+          for (let i = start; i <= end; i++) {
+            AppState.selectedPhotoIds.add(currentPhotos[i].id);
           }
-        });
-        renderGallery();
+        } else {
+          toggleSingleSelection(photoId);
+        }
+      } else {
+        toggleSingleSelection(photoId);
+      }
+      AppState.lastSelectedId = photoId;
+      renderGallery();
+    }
+
+    function toggleSingleSelection(photoId) {
+      if (AppState.selectedPhotoIds.has(photoId)) {
+        AppState.selectedPhotoIds.delete(photoId);
+      } else {
+        AppState.selectedPhotoIds.add(photoId);
       }
     }
 
-    function updateBatchToolbar() {
-      const toolbar = document.getElementById('batch-toolbar');
-      const countEl = document.getElementById('batch-count');
-      const selectedCount = AppState.selectedPhotoIds.size;
+    function getFilteredAndSortedPhotos() {
+      let list = AppState.photos.filter(p => {
+        if (AppState.currentFolder !== "/" && p.folder !== AppState.currentFolder) {
+          return false;
+        }
+        if (AppState.searchQuery.trim() !== "") {
+          const q = AppState.searchQuery.toLowerCase();
+          const matchName = p.name.toLowerCase().includes(q);
+          const matchCam = (`${p.exif.make} ${p.exif.model}`).toLowerCase().includes(q);
+          const matchFolder = p.folder.toLowerCase().includes(q);
+          return matchName || matchCam || matchFolder;
+        }
+        return true;
+      });
 
-      if (selectedCount > 0) {
-        toolbar.classList.remove('hidden');
-        countEl.textContent = `${selectedCount} seleccionat${selectedCount > 1 ? 's' : ''}`;
-      } else {
-        toolbar.classList.add('hidden');
+      list.sort((a, b) => {
+        switch (AppState.sortBy) {
+          case 'exifDateDesc':
+            return (b.exif.dateTaken || 0) - (a.exif.dateTaken || 0);
+          case 'exifDateAsc':
+            return (a.exif.dateTaken || 0) - (b.exif.dateTaken || 0);
+          case 'nameAsc':
+            return a.name.localeCompare(b.name);
+          case 'nameDesc':
+            return b.name.localeCompare(a.name);
+          case 'sizeDesc':
+            return b.size - a.size;
+          case 'sizeAsc':
+            return a.size - b.size;
+          case 'cameraModel':
+            return (a.exif.model || '').localeCompare(b.exif.model || '');
+          case 'isoValue':
+            return (b.exif.iso || 0) - (a.exif.iso || 0);
+          case 'apertureValue':
+            return (a.exif.fNumberNum || 999) - (b.exif.fNumberNum || 999);
+          case 'focalLengthValue':
+            return (b.exif.focalLengthNum || 0) - (a.exif.focalLengthNum || 0);
+          case 'resolutionValue':
+            return (b.exif.megapixels || 0) - (a.exif.megapixels || 0);
+          default:
+            return 0;
+        }
+      });
+
+      return list;
+    }
+
+    function renderFullExifTable(filterTerm = '') {
+      const container = document.getElementById('modal-full-exif');
+      if (!container || !AppState.currentModalPhoto) return;
+
+      container.innerHTML = '';
+      const tags = AppState.currentModalPhoto.exif.rawTags || {};
+      const entries = Object.entries(tags);
+
+      if (entries.length === 0) {
+        container.innerHTML = '<div class="text-slate-500 italic p-2 text-center">No hi ha etiquetes EXIF addicionals disponibles.</div>';
+        return;
+      }
+
+      const term = filterTerm.toLowerCase().trim();
+      let count = 0;
+
+      entries.forEach(([key, value]) => {
+        const parsedVal = parseExifValue(value);
+        const valStr = String(parsedVal);
+
+        if (term && !key.toLowerCase().includes(term) && !valStr.toLowerCase().includes(term)) {
+          return;
+        }
+
+        const row = document.createElement('div');
+        row.className = 'flex items-center justify-between py-1 px-2 hover:bg-slate-900 rounded border-b border-slate-800/40 text-[11px]';
+        row.innerHTML = `
+          <span class="text-slate-400 font-mono truncate mr-2">${key}</span>
+          <span class="text-slate-200 font-medium text-right truncate max-w-[200px]" title="${valStr}">${valStr}</span>
+        `;
+        container.appendChild(row);
+        count++;
+      });
+
+      if (count === 0) {
+        container.innerHTML = '<div class="text-slate-500 italic p-2 text-center">Cap etiqueta coincideix amb la cerca.</div>';
       }
     }
 
     function renderGallery() {
-      const emptyState = document.getElementById('empty-state');
       const galleryGrid = document.getElementById('gallery-grid');
-      
-      const currentPhotos = getFilteredAndSortedPhotos();
+      const emptyState = document.getElementById('empty-state');
+      const batchToolbar = document.getElementById('batch-toolbar');
+      const batchCount = document.getElementById('batch-count');
 
-      if (currentPhotos.length === 0) {
+      const photos = getFilteredAndSortedPhotos();
+
+      if (AppState.selectedPhotoIds.size > 0) {
+        batchToolbar.classList.remove('hidden');
+        batchCount.textContent = `${AppState.selectedPhotoIds.size} seleccionats`;
+      } else {
+        batchToolbar.classList.add('hidden');
+      }
+
+      if (photos.length === 0) {
         emptyState.classList.remove('hidden');
         galleryGrid.classList.add('hidden');
-        galleryGrid.innerHTML = '';
-        updateBatchToolbar();
         return;
       }
 
       emptyState.classList.add('hidden');
       galleryGrid.classList.remove('hidden');
-      galleryGrid.innerHTML = '';
 
       if (AppState.viewMode === 'list') {
-        galleryGrid.className = "flex flex-col space-y-2";
+        galleryGrid.className = 'flex flex-col gap-2';
       } else {
-        galleryGrid.className = "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-4";
+        galleryGrid.className = 'grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-4';
       }
 
-      currentPhotos.forEach(photo => {
+      galleryGrid.innerHTML = '';
+
+      photos.forEach(photo => {
         const isSelected = AppState.selectedPhotoIds.has(photo.id);
 
         const card = document.createElement('div');
-        card.setAttribute('draggable', 'true');
-        card.dataset.photoId = photo.id;
+        card.draggable = true;
 
-        if (AppState.viewMode === 'grid') {
-          card.className = `group relative rounded-xl overflow-hidden bg-slate-900 border transition-all cursor-pointer select-none flex flex-col ${
-            isSelected ? 'border-blue-500 ring-2 ring-blue-500/50 shadow-lg shadow-blue-500/10' : 'border-slate-800 hover:border-slate-700'
+        if (AppState.viewMode === 'list') {
+          card.className = `group flex items-center justify-between p-2.5 rounded-xl border bg-slate-900/60 transition cursor-pointer ${
+            isSelected ? 'border-blue-500 bg-blue-950/30 ring-1 ring-blue-500' : 'border-slate-800 hover:border-slate-700'
           }`;
-
-          card.innerHTML = `
-            <div class="aspect-square relative overflow-hidden bg-slate-950">
-              <img src="${photo.url}" alt="${photo.name}" class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" loading="lazy" />
-              
-              <div class="absolute top-2 left-2 z-10">
-                <input type="checkbox" ${isSelected ? 'checked' : ''} class="w-4 h-4 rounded text-blue-600 bg-slate-900/80 border-slate-700 focus:ring-0 cursor-pointer photo-checkbox" />
-              </div>
-
-              <div class="absolute top-2 right-2 z-10 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
-                <button class="btn-delete-single p-1.5 bg-slate-900/80 hover:bg-rose-600 text-slate-200 hover:text-white rounded-md backdrop-blur-sm transition" title="Eliminar foto">
-                  <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
-                </button>
-              </div>
-
-              ${photo.exif.latitude !== null ? `
-                <div class="absolute bottom-2 right-2 bg-slate-900/80 text-teal-400 p-1 rounded backdrop-blur-sm" title="Ubicació GPS disponible">
-                  <i data-lucide="map-pin" class="w-3.5 h-3.5"></i>
-                </div>
-              ` : ''}
-            </div>
-
-            <div class="p-2.5 flex-1 flex flex-col justify-between text-xs bg-slate-900">
-              <p class="font-medium text-slate-200 truncate mb-1" title="${photo.name}">${photo.name}</p>
-              <div class="text-[11px] text-slate-400 space-y-0.5">
-                <p class="truncate text-slate-400">${photo.exif.make} ${photo.exif.model}</p>
-                <div class="flex items-center justify-between text-[10px] text-slate-500 pt-1 border-t border-slate-800">
-                  <span>${photo.exif.iso ? `ISO ${photo.exif.iso}` : formatBytes(photo.size)}</span>
-                  <span>${photo.exif.fNumber || ''}</span>
-                </div>
-              </div>
-            </div>
-          `;
-        } else {
-          card.className = `group relative rounded-lg p-2.5 bg-slate-900 border transition-all cursor-pointer select-none flex items-center justify-between gap-3 ${
-            isSelected ? 'border-blue-500 ring-1 ring-blue-500/50 bg-blue-950/20' : 'border-slate-800 hover:border-slate-700'
-          }`;
-
           card.innerHTML = `
             <div class="flex items-center gap-3 overflow-hidden">
-              <input type="checkbox" ${isSelected ? 'checked' : ''} class="w-4 h-4 rounded text-blue-600 bg-slate-900 border-slate-700 focus:ring-0 cursor-pointer photo-checkbox" />
-              <img src="${photo.url}" alt="${photo.name}" class="w-10 h-10 object-cover rounded-md bg-slate-950 shrink-0" />
-              <div class="overflow-hidden">
-                <p class="font-medium text-xs text-slate-200 truncate" title="${photo.name}">${photo.name}</p>
-                <p class="text-[11px] text-slate-400 truncate">${photo.exif.make} ${photo.exif.model} • ${photo.exif.iso ? `ISO ${photo.exif.iso}` : ''} ${photo.exif.fNumber ? `• ${photo.exif.fNumber}` : ''}</p>
+              <input type="checkbox" ${isSelected ? 'checked' : ''} class="chk-photo rounded text-blue-600 bg-slate-950 border-slate-700 cursor-pointer" />
+              <img src="${photo.url}" alt="${photo.name}" class="w-10 h-10 object-cover rounded-lg bg-slate-950 shrink-0" />
+              <div class="truncate">
+                <h4 class="text-xs font-semibold text-slate-200 truncate">${photo.name}</h4>
+                <p class="text-[10px] text-slate-400">${photo.exif.make} ${photo.exif.model} • ${photo.exif.iso ? 'ISO ' + photo.exif.iso : ''} • ${photo.exif.fNumber || ''}</p>
               </div>
             </div>
-
-            <div class="flex items-center gap-4 text-xs text-slate-400 shrink-0">
-              <span class="hidden md:inline">${formatDate(photo.exif.dateTaken)}</span>
-              <span>${formatBytes(photo.size)}</span>
-              <button class="btn-delete-single p-1.5 hover:text-rose-400 transition" title="Eliminar foto">
+            <div class="flex items-center gap-3 shrink-0 text-xs text-slate-400">
+              <span class="font-mono text-[11px] hidden md:inline">${formatDate(photo.exif.dateTaken)}</span>
+              <span class="text-[11px] hidden sm:inline">${formatBytes(photo.size)}</span>
+              <button class="btn-inspect p-1 hover:text-blue-400 rounded-md transition" title="Inspeccionar EXIF">
+                <i data-lucide="info" class="w-4 h-4"></i>
+              </button>
+              <button class="btn-delete p-1 hover:text-rose-400 rounded-md transition" title="Eliminar de la galeria">
                 <i data-lucide="trash-2" class="w-4 h-4"></i>
               </button>
             </div>
           `;
+        } else {
+          card.className = `group relative rounded-xl border overflow-hidden bg-slate-900/60 transition cursor-pointer ${
+            isSelected ? 'border-blue-500 ring-2 ring-blue-500/80 bg-blue-950/20' : 'border-slate-800/80 hover:border-slate-700'
+          }`;
+          card.innerHTML = `
+            <div class="aspect-square bg-slate-950 relative overflow-hidden flex items-center justify-center">
+              <img src="${photo.url}" alt="${photo.name}" class="w-full h-full object-cover group-hover:scale-105 transition duration-300" />
+              <div class="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition flex items-end justify-between p-2">
+                <button class="btn-inspect p-1.5 bg-slate-900/80 hover:bg-blue-600 text-white rounded-lg backdrop-blur-sm transition shadow" title="Inspeccionar EXIF">
+                  <i data-lucide="info" class="w-3.5 h-3.5"></i>
+                </button>
+                <button class="btn-delete p-1.5 bg-slate-900/80 hover:bg-rose-600 text-white rounded-lg backdrop-blur-sm transition shadow" title="Eliminar de la galeria">
+                  <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                </button>
+              </div>
+              <div class="absolute top-2 left-2">
+                <input type="checkbox" ${isSelected ? 'checked' : ''} class="chk-photo rounded text-blue-600 bg-slate-950/80 border-slate-700 cursor-pointer w-4 h-4" />
+              </div>
+            </div>
+            <div class="p-2.5">
+              <h4 class="text-xs font-semibold text-slate-200 truncate" title="${photo.name}">${photo.name}</h4>
+              <div class="flex items-center justify-between text-[10px] text-slate-400 mt-1">
+                <span class="truncate">${photo.exif.model || 'Sense càmera'}</span>
+                <span class="font-mono text-slate-500 shrink-0 ml-1">${photo.exif.iso ? 'ISO ' + photo.exif.iso : ''}</span>
+              </div>
+            </div>
+          `;
         }
-
-        card.addEventListener('click', (e) => {
-          if (e.target.closest('.btn-delete-single')) {
-            e.stopPropagation();
-            deleteSinglePhoto(photo.id);
-            return;
-          }
-          toggleSelectPhoto(photo.id, e, currentPhotos);
-        });
-
-        card.addEventListener('dblclick', () => {
-          openExifModal(photo.id);
-        });
 
         card.addEventListener('dragstart', (e) => {
           e.dataTransfer.setData('text/plain', photo.id);
         });
 
+        card.addEventListener('click', (e) => {
+          if (e.target.closest('.btn-inspect')) {
+            openExifModal(photo.id);
+          } else if (e.target.closest('.btn-delete')) {
+            deleteSinglePhoto(photo.id);
+          } else {
+            toggleSelectPhoto(photo.id, e.shiftKey);
+          }
+        });
+
         galleryGrid.appendChild(card);
       });
 
-      updateBatchToolbar();
       refreshIcons();
     }
 
-    function setupDragAndDrop() {
+    document.addEventListener('DOMContentLoaded', () => {
       const dropTarget = document.getElementById('drop-target');
       const dragOverlay = document.getElementById('drag-overlay');
 
-      let dragCounter = 0;
-
-      window.addEventListener('dragenter', (e) => {
-        e.preventDefault();
-        dragCounter++;
-        if (dragOverlay) dragOverlay.classList.remove('opacity-0', 'pointer-events-none');
-      });
-
-      window.addEventListener('dragleave', (e) => {
-        e.preventDefault();
-        dragCounter--;
-        if (dragCounter <= 0) {
-          dragCounter = 0;
-          if (dragOverlay) dragOverlay.classList.add('opacity-0', 'pointer-events-none');
-        }
-      });
-
-      window.addEventListener('dragover', (e) => {
-        e.preventDefault();
-      });
-
-      window.addEventListener('drop', async (e) => {
-        e.preventDefault();
-        dragCounter = 0;
-        if (dragOverlay) dragOverlay.classList.add('opacity-0', 'pointer-events-none');
-
-        if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-          const files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/'));
-          if (files.length > 0) {
-            await importFiles(files);
-          }
-        }
-      });
-    }
-
-    async function loadDemoPhotos() {
-      const demoImagesData = [
-        { name: "Muntanya_Pirineus.jpg", camera: "Canon EOS R5", lens: "RF 24-70mm F2.8 L IS USM", iso: 100, f: "2.8", shutter: "1/1000s", date: "2023:07:15 10:30:00", lat: 42.5063, lng: 1.5218, color: "#1e3a8a", text: "Pirineus (2023)" },
-        { name: "Platja_Costa_Brava.jpg", camera: "Sony A7 IV", lens: "FE 16-35mm F2.8 GM", iso: 200, f: "8.0", shutter: "1/500s", date: "2023:08:20 17:45:00", lat: 41.9961, lng: 3.2045, color: "#0284c7", text: "Costa Brava" },
-        { name: "Carrer_Barcelona.jpg", camera: "Fujifilm X-T4", lens: "XF 23mm F1.4 R LM WR", iso: 400, f: "4.0", shutter: "1/250s", date: "2024:02:10 14:15:00", lat: 41.3879, lng: 2.1699, color: "#d97706", text: "Barcelona Street" },
-        { name: "Retrat_Estudi.jpg", camera: "Sony A7 IV", lens: "FE 85mm F1.4 GM", iso: 100, f: "1.4", shutter: "1/160s", date: "2024:03:05 11:00:00", lat: null, lng: null, color: "#4c1d95", text: "Studio Portrait" },
-        { name: "Natura_Montseny.jpg", camera: "Canon EOS R5", lens: "RF 70-200mm F2.8 L IS USM", iso: 800, f: "5.6", shutter: "1/125s", date: "2024:05:01 09:20:00", lat: 41.7801, lng: 2.4332, color: "#15803d", text: "Montseny Forest" }
-      ];
-
-      const demoFiles = [];
-      for (const demo of demoImagesData) {
-        const canvas = document.createElement('canvas');
-        canvas.width = 800;
-        canvas.height = 600;
-        const ctx = canvas.getContext('2d');
-
-        ctx.fillStyle = demo.color;
-        ctx.fillRect(0, 0, 800, 600);
-
-        ctx.fillStyle = "#ffffff";
-        ctx.font = "bold 36px sans-serif";
-        ctx.textAlign = "center";
-        ctx.fillText(demo.text, 400, 280);
-
-        ctx.font = "20px sans-serif";
-        ctx.fillText(`${demo.camera} | ${demo.lens}`, 400, 330);
-
-        const blob = await new Promise(res => canvas.toBlob(res, 'image/jpeg'));
-        const file = new File([blob], demo.name, { type: 'image/jpeg', lastModified: 1715000000000 });
-
-        demoFiles.push(file);
-      }
-
-      await importFiles(demoFiles);
-    }
-
-    window.addEventListener('DOMContentLoaded', () => {
-      setupDragAndDrop();
-
-      document.getElementById('btn-create-folder').addEventListener('click', async () => {
-        const name = await showPrompt("Nova Carpeta", "Introdueix el nom de la nova carpeta:");
-        if (name) createFolder(name);
-      });
-
-      document.getElementById('btn-config-criteria').addEventListener('click', openCriteriaModal);
-      document.getElementById('btn-close-criteria-modal').addEventListener('click', () => {
-        document.getElementById('criteria-modal').classList.add('hidden');
-      });
-
-      document.getElementById('btn-save-criteria').addEventListener('click', () => {
-        const checkboxes = document.querySelectorAll('#criteria-checkbox-list input[type="checkbox"]');
-        checkboxes.forEach(chk => {
-          const id = chk.getAttribute('data-crit-id');
-          const crit = AppState.availableCriteria.find(c => c.id === id);
-          if (crit) crit.active = chk.checked;
+      if (dropTarget) {
+        dropTarget.addEventListener('dragover', (e) => {
+          e.preventDefault();
+          if (dragOverlay) dragOverlay.classList.remove('opacity-0');
         });
 
-        document.getElementById('criteria-modal').classList.add('hidden');
+        dropTarget.addEventListener('dragleave', (e) => {
+          if (e.target === dropTarget && dragOverlay) {
+            dragOverlay.classList.add('opacity-0');
+          }
+        });
+
+        dropTarget.addEventListener('drop', async (e) => {
+          e.preventDefault();
+          if (dragOverlay) dragOverlay.classList.add('opacity-0');
+
+          if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+            const files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/'));
+            await importFiles(files);
+          }
+        });
+      }
+
+      document.getElementById('btn-create-folder')?.addEventListener('click', async () => {
+        const name = await showPrompt("Nova Carpeta", "Introdueix el nom de la nova carpeta:");
+        if (name) {
+          createFolder(name);
+        }
+      });
+
+      document.getElementById('btn-config-criteria')?.addEventListener('click', openCriteriaModal);
+      document.getElementById('btn-close-criteria-modal')?.addEventListener('click', () => {
+        document.getElementById('criteria-modal')?.classList.add('hidden');
+      });
+      document.getElementById('btn-save-criteria')?.addEventListener('click', () => {
+        const checkboxes = document.querySelectorAll('#criteria-checkbox-list input[type="checkbox"]');
+        checkboxes.forEach(cb => {
+          const critId = cb.getAttribute('data-crit-id');
+          const item = AppState.availableCriteria.find(c => c.id === critId);
+          if (item) item.active = cb.checked;
+        });
+        document.getElementById('criteria-modal')?.classList.add('hidden');
         renderAutoOrganizePanel();
       });
 
-      document.getElementById('btn-close-exif-modal').addEventListener('click', closeExifModal);
-      document.getElementById('input-modal-exif-search').addEventListener('input', (e) => {
+      document.getElementById('btn-close-exif-modal')?.addEventListener('click', closeExifModal);
+      document.getElementById('btn-prev-photo')?.addEventListener('click', () => navigateModalPhoto(-1));
+      document.getElementById('btn-next-photo')?.addEventListener('click', () => navigateModalPhoto(1));
+      document.getElementById('btn-prev-photo-overlay')?.addEventListener('click', () => navigateModalPhoto(-1));
+      document.getElementById('btn-next-photo-overlay')?.addEventListener('click', () => navigateModalPhoto(1));
+      document.getElementById('modal-checkbox-select')?.addEventListener('change', toggleModalPhotoSelection);
+
+      window.addEventListener('keydown', (e) => {
+        const modal = document.getElementById('exif-modal');
+        if (modal && !modal.classList.contains('hidden')) {
+          if (e.key === 'ArrowLeft') {
+            e.preventDefault();
+            navigateModalPhoto(-1);
+          } else if (e.key === 'ArrowRight') {
+            e.preventDefault();
+            navigateModalPhoto(1);
+          } else if (e.key === ' ' || e.code === 'Space') {
+            e.preventDefault();
+            toggleModalPhotoSelection();
+          } else if (e.key === 'Escape') {
+            closeExifModal();
+          }
+        }
+      });
+
+      document.getElementById('input-modal-exif-search')?.addEventListener('input', (e) => {
         renderFullExifTable(e.target.value);
       });
 
-      document.getElementById('btn-batch-export-disk').addEventListener('click', () => {
+      document.getElementById('btn-batch-export-disk')?.addEventListener('click', () => {
         const selectedPhotos = AppState.photos.filter(p => AppState.selectedPhotoIds.has(p.id));
         exportToPhysicalFolder(selectedPhotos);
       });
 
-      document.getElementById('btn-batch-rename').addEventListener('click', batchRename);
-      document.getElementById('btn-batch-delete').addEventListener('click', batchDelete);
-      document.getElementById('btn-deselect-all').addEventListener('click', () => {
+      document.getElementById('btn-batch-delete-disk')?.addEventListener('click', () => {
+        const selectedPhotos = AppState.photos.filter(p => AppState.selectedPhotoIds.has(p.id));
+        deleteFromHardDrive(selectedPhotos);
+      });
+
+      document.getElementById('btn-batch-rename')?.addEventListener('click', batchRename);
+      document.getElementById('btn-batch-delete')?.addEventListener('click', batchDelete);
+      document.getElementById('btn-select-all')?.addEventListener('click', selectAllPhotos);
+      document.getElementById('btn-select-all-batch')?.addEventListener('click', selectAllPhotos);
+      document.getElementById('btn-deselect-all')?.addEventListener('click', () => {
         AppState.selectedPhotoIds.clear();
         renderGallery();
       });
 
-      document.getElementById('select-move-folder').addEventListener('change', (e) => {
+      document.getElementById('select-move-folder')?.addEventListener('change', (e) => {
         const targetFolder = e.target.value;
         if (!targetFolder) return;
         AppState.photos.forEach(p => {
@@ -1544,39 +1664,37 @@
         if (e.target.files && e.target.files.length > 0) {
           const files = Array.from(e.target.files).filter(f => f.type.startsWith('image/'));
           await importFiles(files);
+          e.target.value = '';
         }
       };
 
-      document.getElementById('input-files').addEventListener('change', handleFileInput);
-      document.getElementById('empty-input-files').addEventListener('change', handleFileInput);
-      document.getElementById('input-folder').addEventListener('change', handleFileInput);
+      document.getElementById('input-files')?.addEventListener('change', handleFileInput);
+      document.getElementById('empty-input-files')?.addEventListener('change', handleFileInput);
+      document.getElementById('input-folder')?.addEventListener('change', handleFileInput);
 
-      document.getElementById('btn-load-demo').addEventListener('click', loadDemoPhotos);
-      document.getElementById('empty-btn-demo').addEventListener('click', loadDemoPhotos);
+      document.getElementById('btn-export-zip')?.addEventListener('click', exportToZip);
 
-      document.getElementById('btn-export-zip').addEventListener('click', exportToZip);
-
-      document.getElementById('input-search').addEventListener('input', (e) => {
+      document.getElementById('input-search')?.addEventListener('input', (e) => {
         AppState.searchQuery = e.target.value;
         renderGallery();
       });
 
-      document.getElementById('select-sort-by').addEventListener('change', (e) => {
+      document.getElementById('select-sort-by')?.addEventListener('change', (e) => {
         AppState.sortBy = e.target.value;
         renderGallery();
       });
 
-      document.getElementById('btn-view-grid').addEventListener('click', () => {
+      document.getElementById('btn-view-grid')?.addEventListener('click', () => {
         AppState.viewMode = 'grid';
-        document.getElementById('btn-view-grid').classList.add('bg-slate-700', 'text-white');
-        document.getElementById('btn-view-list').classList.remove('bg-slate-700', 'text-white');
+        document.getElementById('btn-view-grid')?.classList.add('bg-slate-700', 'text-white');
+        document.getElementById('btn-view-list')?.classList.remove('bg-slate-700', 'text-white');
         renderGallery();
       });
 
-      document.getElementById('btn-view-list').addEventListener('click', () => {
+      document.getElementById('btn-view-list')?.addEventListener('click', () => {
         AppState.viewMode = 'list';
-        document.getElementById('btn-view-list').classList.add('bg-slate-700', 'text-white');
-        document.getElementById('btn-view-grid').classList.remove('bg-slate-700', 'text-white');
+        document.getElementById('btn-view-list')?.classList.add('bg-slate-700', 'text-white');
+        document.getElementById('btn-view-grid')?.classList.remove('bg-slate-700', 'text-white');
         renderGallery();
       });
 
