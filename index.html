@@ -132,13 +132,12 @@
       </div>
     </aside>
 
-    <!-- Main Workspace -->
     <main class="flex-1 flex flex-col bg-slate-950 overflow-hidden relative" id="drop-target">
       <div class="h-14 bg-slate-900/50 border-b border-slate-800/80 flex items-center justify-between px-4 shrink-0 flex-wrap gap-2">
         <div class="flex items-center gap-2 flex-1 max-w-xs">
           <div class="relative w-full">
             <i data-lucide="search" class="w-4 h-4 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-500"></i>
-            <input type="text" id="input-search" placeholder="Cercar per nom, càmera, model..." class="w-full bg-slate-800/80 border border-slate-700/60 rounded-lg pl-8 pr-3 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-blue-500 transition" />
+            <input type="text" id="input-search" placeholder="Cercar per nom, càmera..." class="w-full bg-slate-800/80 border border-slate-700/60 rounded-lg pl-8 pr-3 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-blue-500 transition" />
           </div>
         </div>
 
@@ -171,7 +170,7 @@
       </div>
 
       <!-- Batch Toolbar -->
-      <div id="batch-toolbar" class="hidden bg-blue-900/30 border-b border-blue-500/30 px-4 py-2 flex items-center justify-between text-xs text-blue-200">
+      <div id="batch-toolbar" class="hidden bg-blue-900/30 border-b border-blue-500/30 px-4 py-2 flex items-center justify-between text-xs text-blue-200 z-10">
         <div class="flex items-center gap-2">
           <span class="font-semibold" id="batch-count">0 seleccionats</span>
           <button id="btn-select-all-batch" class="text-blue-400 hover:text-blue-300 underline text-[11px] ml-2">Seleccionar tot</button>
@@ -197,7 +196,6 @@
         </div>
       </div>
 
-      <!-- Gallery Grid -->
       <div id="gallery-container" class="flex-1 overflow-y-auto p-4 sm:p-6">
         <div id="empty-state" class="h-full flex flex-col items-center justify-center text-center p-6 border-2 border-dashed border-slate-800 rounded-2xl bg-slate-900/20">
           <div class="w-16 h-16 rounded-full bg-slate-800/80 flex items-center justify-center text-slate-400 mb-4 border border-slate-700">
@@ -218,7 +216,7 @@
         <div id="gallery-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-4 hidden"></div>
       </div>
 
-      <div id="drag-overlay" class="absolute inset-0 bg-blue-900/80 backdrop-blur-sm border-4 border-dashed border-blue-400 flex flex-col items-center justify-center gap-3 z-50 pointer-events-none opacity-0 transition-opacity duration-200">
+      <div id="drag-overlay" class="absolute inset-0 bg-blue-900/80 backdrop-blur-sm border-4 border-dashed border-blue-400 flex flex-col items-center justify-center gap-3 z-[60] pointer-events-none opacity-0 transition-opacity duration-200">
         <i data-lucide="upload-cloud" class="w-16 h-16 text-blue-200 animate-bounce"></i>
         <p class="text-xl font-bold text-white">Afluixa els fitxers per importar-los</p>
         <p class="text-xs text-blue-200">Llegirem les dades EXIF automàticament</p>
@@ -226,7 +224,6 @@
     </main>
   </div>
 
-  <!-- EXIF Modal -->
   <div id="exif-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-6 z-50 hidden">
     <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-4xl w-full max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
       <div class="p-4 border-b border-slate-800 flex items-center justify-between bg-slate-900 shrink-0">
@@ -343,13 +340,10 @@
           <i data-lucide="x" class="w-4 h-4"></i>
         </button>
       </div>
-
       <p class="text-xs text-slate-400 leading-relaxed">
         Marca les metadades que vols tenir disponibles a la barra lateral per agrupar les teves imatges automàticament:
       </p>
-
       <div class="space-y-2 max-h-60 overflow-y-auto pr-1 text-xs text-slate-200" id="criteria-checkbox-list"></div>
-
       <div class="flex justify-end gap-2 pt-3 border-t border-slate-800">
         <button id="btn-save-criteria" class="px-4 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs rounded-lg font-medium transition">
           Aplicar Canvis
@@ -387,6 +381,20 @@
       </div>
     </form>
   </dialog>
+
+  <!-- Indicador de Processament / Càrrega (Ara és modal per fer-lo més visible) -->
+  <div id="processing-indicator" class="hidden fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center z-[100] transition-opacity">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl p-8 flex flex-col items-center shadow-2xl max-w-sm w-full mx-4 text-center">
+      <i data-lucide="loader-circle" class="w-14 h-14 text-blue-500 animate-spin mb-4"></i>
+      <h3 class="text-lg font-bold text-slate-100 mb-2" id="processing-title">Processant imatges...</h3>
+      <p class="text-sm text-slate-400 font-medium" id="processing-count">Llegint dades EXIF (0/0)</p>
+      
+      <!-- Barra de progrés visual opcional -->
+      <div class="w-full h-1.5 bg-slate-800 rounded-full mt-5 overflow-hidden">
+        <div class="h-full bg-blue-500 rounded-full w-full animate-pulse"></div>
+      </div>
+    </div>
+  </div>
 
   <script>
     const AppState = {
@@ -514,7 +522,9 @@
     }
 
     function refreshIcons() {
-      if (window.lucide) lucide.createIcons();
+      if (window.lucide) {
+        lucide.createIcons();
+      }
     }
 
     function generateId() {
@@ -930,10 +940,31 @@
     async function importFiles(files) {
       if (!files || files.length === 0) return;
 
+      const processingIndicator = document.getElementById('processing-indicator');
+      const processingCount = document.getElementById('processing-count');
+      
+      if (processingIndicator) {
+        processingIndicator.classList.remove('hidden');
+        refreshIcons();
+      }
+
       const currentFingerprints = new Set(AppState.photos.map(p => p.fingerprint));
       let addedCount = 0;
+      let processedIndex = 0;
+      const totalFiles = files.length;
 
       for (const file of files) {
+        processedIndex++;
+        if (processingCount) {
+          processingCount.textContent = `Llegint dades EXIF (${processedIndex}/${totalFiles})`;
+        }
+        
+        // Un petit 'yield' per permetre al navegador dibuixar el text de càrrega 
+        // durant processos de moltes fotos (evita que l'indicador es quedi penjat)
+        if (processedIndex % 3 === 0) {
+            await new Promise(r => setTimeout(r, 0));
+        }
+
         let folderPath = "/";
         
         // Conservar l'estructura de carpetes si els fitxers provenen del botó "Carregar Carpeta"
@@ -962,6 +993,10 @@
           currentFingerprints.add(fingerprint);
           addedCount++;
         }
+      }
+
+      if (processingIndicator) {
+        processingIndicator.classList.add('hidden');
       }
 
       if (addedCount > 0) {
@@ -1143,6 +1178,11 @@
       }
       
       updateBatchToolbar();
+      
+      // CRÍTIC: Aquesta és la clau perquè les icones de l'ull i del quadre
+      // de selecció no es vegin com "simples rodones buides". Després de 
+      // crear nou HTML amb <i data-lucide="..."> cal ordenar a lucide que els dibuixi!
+      refreshIcons();
     }
 
     function toggleSelectPhoto(photoId, e = null) {
@@ -1193,17 +1233,18 @@
       });
 
       if (isGrid) {
+        // En vista graella, ajustat l'estil per mostrar clarament les icones sense "rodones buides"
         el.className = `group relative bg-slate-900 border rounded-xl overflow-hidden cursor-pointer hover:shadow-lg transition flex flex-col ${isSelected ? 'border-blue-500 shadow-blue-900/20 shadow-md ring-1 ring-blue-500' : 'border-slate-800 hover:border-slate-700'}`;
         el.innerHTML = `
           <div class="aspect-square bg-slate-950 relative overflow-hidden flex items-center justify-center">
             <img src="${photo.url}" alt="${photo.name}" class="w-full h-full object-cover group-hover:scale-105 transition duration-300" loading="lazy" />
             <div class="absolute inset-0 bg-gradient-to-b from-black/50 via-transparent to-black/60 opacity-0 group-hover:opacity-100 transition duration-200"></div>
             
-            <button class="btn-select-toggle absolute top-2 left-2 p-1.5 rounded-lg bg-slate-900/50 backdrop-blur border border-slate-700/80 text-white ${isSelected ? 'opacity-100 bg-blue-600 border-blue-500' : 'opacity-0 group-hover:opacity-100 hover:bg-slate-800'}" title="Seleccionar">
-              <i data-lucide="${isSelected ? 'check-square' : 'square'}" class="w-4 h-4"></i>
+            <button class="btn-select-toggle absolute top-2 left-2 p-1 rounded bg-slate-900/60 backdrop-blur border border-slate-700/80 text-white ${isSelected ? 'opacity-100 bg-blue-600 border-blue-500' : 'opacity-0 group-hover:opacity-100 hover:bg-slate-800'}" title="Seleccionar">
+              <i data-lucide="${isSelected ? 'check-square' : 'square'}" class="w-5 h-5"></i>
             </button>
-            <button class="btn-open-exif absolute top-2 right-2 p-1.5 rounded-lg bg-slate-900/50 backdrop-blur border border-slate-700/80 text-white opacity-0 group-hover:opacity-100 hover:bg-blue-600 hover:border-blue-500 transition" title="Veure Dades EXIF">
-              <i data-lucide="info" class="w-4 h-4"></i>
+            <button class="btn-open-exif absolute top-2 right-2 p-1.5 rounded-lg bg-slate-900/60 backdrop-blur border border-slate-700/80 text-white opacity-0 group-hover:opacity-100 hover:bg-blue-600 hover:border-blue-500 transition" title="Veure Dades EXIF">
+              <i data-lucide="eye" class="w-5 h-5"></i>
             </button>
             
             <div class="absolute bottom-2 left-2 right-2 flex flex-col gap-0.5 opacity-0 group-hover:opacity-100 transition transform translate-y-2 group-hover:translate-y-0">
@@ -1220,10 +1261,11 @@
           </div>
         `;
       } else {
+        // Vista en llista
         el.className = `group flex items-center p-2 gap-3 bg-slate-900 border rounded-xl hover:bg-slate-800/80 transition cursor-pointer ${isSelected ? 'border-blue-500 bg-blue-900/10 ring-1 ring-blue-500' : 'border-slate-800'}`;
         el.innerHTML = `
-          <button class="btn-select-toggle p-1.5 rounded-lg text-slate-400 hover:text-white transition shrink-0">
-            <i data-lucide="${isSelected ? 'check-square' : 'square'}" class="w-5 h-5 ${isSelected ? 'text-blue-500' : ''}"></i>
+          <button class="btn-select-toggle p-1 rounded text-slate-400 hover:text-white transition shrink-0">
+            <i data-lucide="${isSelected ? 'check-square' : 'square'}" class="w-6 h-6 ${isSelected ? 'text-blue-500' : ''}"></i>
           </button>
           <div class="w-12 h-12 rounded-lg bg-slate-950 overflow-hidden shrink-0 border border-slate-700">
             <img src="${photo.url}" class="w-full h-full object-cover" loading="lazy" />
@@ -1246,7 +1288,7 @@
             </div>
           </div>
           <button class="btn-open-exif p-2 bg-slate-800 text-slate-300 hover:bg-blue-600 hover:text-white rounded-lg transition shrink-0" title="Veure Metadades">
-            <i data-lucide="info" class="w-4 h-4"></i>
+            <i data-lucide="eye" class="w-5 h-5"></i>
           </button>
         `;
       }
@@ -1257,7 +1299,7 @@
       });
       
       el.addEventListener('click', (e) => {
-        if (!e.target.closest('.btn-open-exif')) {
+        if (!e.target.closest('.btn-open-exif') && !e.target.closest('.btn-select-toggle')) {
           toggleSelectPhoto(photo.id, e);
         }
       });
@@ -1406,7 +1448,7 @@
       const currentIdx = visible.findIndex(p => p.id === photo.id);
       document.getElementById('modal-photo-counter').textContent = `${currentIdx + 1} / ${visible.length}`;
       
-      // GPS Logic
+      // Lògica de GPS (Leaflet)
       const mapContainer = document.getElementById('leaflet-map');
       const noGpsMsg = document.getElementById('no-gps-msg');
       
