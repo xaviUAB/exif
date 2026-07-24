@@ -415,7 +415,7 @@
         { id: 'cameraModel', name: 'Per Model de Càmera', icon: 'camera', color: 'text-emerald-400', active: true },
         { id: 'isoValue', name: 'Per Sensibilitat ISO', icon: 'sliders', color: 'text-amber-400', active: true },
         { id: 'lensModel', name: 'Per Objectiu (Lens)', icon: 'aperture', color: 'text-purple-400', active: true },
-        { id: 'orientation', name: 'Per Orientació (Horiz/Vert)', icon: 'rotate-cw', color: 'text-rose-400', active: true },
+        { id: 'orientation', name: 'Per Proporció (Horitz/Vert/Quadrada)', icon: 'rotate-cw', color: 'text-rose-400', active: true },
         { id: 'gpsLocation', name: 'Per Ubicació GPS', icon: 'map-pin', color: 'text-teal-400', active: true },
         { id: 'fStop', name: 'Per Obertura (f-number)', icon: 'circle-dot', color: 'text-indigo-400', active: false },
         { id: 'focalLength', name: 'Per Distància Focal (mm)', icon: 'zoom-in', color: 'text-orange-400', active: false }
@@ -1061,7 +1061,18 @@
             folderName = photo.exif.lensModel || 'Sense Objectiu';
             break;
           case 'orientation':
-            folderName = photo.exif.orientation || 'Orientació Desconeguda';
+            // Calculem l'orientació basant-nos en les proporcions d'amplada i alçada
+            if (photo.exif.width && photo.exif.height) {
+              if (photo.exif.width > photo.exif.height) {
+                folderName = 'Horitzontal';
+              } else if (photo.exif.height > photo.exif.width) {
+                folderName = 'Vertical';
+              } else {
+                folderName = 'Quadrada';
+              }
+            } else {
+              folderName = 'Proporció Desconeguda';
+            }
             break;
           case 'gpsLocation':
             folderName = (photo.exif.latitude !== null && photo.exif.longitude !== null) ? 'Amb GPS' : 'Sense GPS';
